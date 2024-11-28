@@ -198,10 +198,12 @@ class Game:
     
     def render_terminal(self, scale : int = 1):
         ressources : str = ' -OD'
-        player_ressource : str = 'P'
+        player_ressource : str = '>' if self.player_direction == 1 else '<'
         lines : list[str] = []
         for y, y_level in enumerate(self.map):
             line = ''.join(item for item in map(lambda cell: ressources[cell] * scale, y_level))
+            if self.player_y - 1 == y:
+                if self.player_holding_block: line = line[:self.player_x * scale] + ressources[CellType.BLOCK] * scale + line[(self.player_x + 1) * scale:]
             if self.player_y == y:
                 line = line[:self.player_x * scale] + player_ressource * scale + line[(self.player_x + 1) * scale:]
             for _ in range(scale): lines.append(line)
@@ -245,7 +247,6 @@ def get_action() -> ActionType|str:
         elif response in allowedset3:
             return response
         else:
-            print(response, allowedset3)
             print("Illegal input! Try again.")
 
 def interactive_test():
