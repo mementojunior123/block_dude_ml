@@ -3,6 +3,7 @@ from enum import Enum, IntEnum
 import json
 import os
 from sys import exit
+from copy import deepcopy
 
 class InvalidMapError(BaseException):
     pass
@@ -64,6 +65,15 @@ def validate_map(map : GameMap, raise_errors : bool = False) -> bool:
         return False
     return True
 
+def load_map(map_name : str, strict = False) -> SavedMap|None:
+    try:
+        with open(f'maps/{map_name}.json', 'r') as file:
+            map_data : SavedMap = json.load(file)
+    except FileNotFoundError:
+        print('Map does not exist!')
+    validate_map(map_data['map'], raise_errors=True)
+    return map_data
+    
 
 class Game:
     def __init__(self, starting_map : list[list[int]], start_player_pos : list[int, int], start_orientation : int = 1):
@@ -81,14 +91,16 @@ class Game:
                     return
     
     @staticmethod
-    def from_game_state(game_state : GameState) -> 'Game':
+    def from_game_state(game_state : GameState, copy_map : bool = False) -> 'Game':
         new_game = Game(game_state['map'], [game_state['player_x'], game_state['player_y']], game_state['player_direction'])
         new_game.player_holding_block = game_state['player_holding_block']
+        if copy_map: new_game.map = deepcopy(new_game.map)
         return new_game
     
     @staticmethod
-    def from_saved_map(saved_map : SavedMap) -> 'Game':
+    def from_saved_map(saved_map : SavedMap, copy_map : bool = False) -> 'Game':
         new_game = Game(saved_map['map'], [saved_map['start_x'], saved_map['start_y']], saved_map['start_direction'])
+        if copy_map: new_game.map = deepcopy(new_game.map)
         return new_game
     
     def to_game_state(self) -> GameState:
@@ -214,6 +226,21 @@ class Game:
         if self.player_x == self.door_coords[0] and self.player_y == self.door_coords[1]:
             return True
         return False
+    
+    def get_binds(self) -> tuple[dict[int, Callable[[], bool]], dict[int, Callable[[], bool]]]:
+        verifications : dict[int, Callable[[], bool]] = {
+            ActionType.DOWN.value : self.down_legal,
+            ActionType.UP.value : self.up_legal,
+            ActionType.LEFT.value : self.left_legal,
+            ActionType.RIGHT.value : self.right_legal,
+        }
+        actions : dict[int, Callable[[], bool]] = {
+            ActionType.DOWN.value : self.down,
+            ActionType.UP.value : self.up,
+            ActionType.LEFT.value : self.left,
+            ActionType.RIGHT.value : self.right,
+        }
+        return verifications, actions
 
 
 def render_terminal_gamestate(game_state : GameState):
@@ -287,4 +314,8 @@ def interactive_test():
                 clear_console()
                 print("Illegal Move!")
 
-interactive_test()
+TEST_MAP : SavedMap = load_map('map_test')
+
+if __name__ == '__main__':
+    interactive_test()
+
