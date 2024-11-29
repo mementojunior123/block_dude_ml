@@ -3,7 +3,11 @@ from enum import Enum, IntEnum
 import json
 import os
 from sys import exit
+import sys
+sys.path.append(".")
 from copy import deepcopy
+
+
 
 class InvalidMapError(BaseException):
     pass

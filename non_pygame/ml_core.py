@@ -1,11 +1,13 @@
 import os
 from typing import Callable
 from time import sleep
+import sys
+sys.path.append(".")
 import neat
 import neat.config
 import neat.population
 import block_dude_core as bd_core
-from utils import stall
+from non_pygame.non_pygame_utils import stall
 
 MAP_USED : bd_core.SavedMap = bd_core.TEST_MAP
 
@@ -39,7 +41,7 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
         ges.append(genome)
         players.append(bd_core.Game.from_saved_map(MAP_USED, copy_map=True))
     
-    for turn in range(100):
+    for turn in range(40):
         finished_players : set[int] = set()
         for index, player in enumerate(players):
             if index in finished_players: continue
