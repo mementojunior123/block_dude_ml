@@ -44,7 +44,7 @@ class NormalGameState(GameState):
 
 class MapEditorGameState(NormalGameState):
     def main_logic(self, delta : float):
-        return super().main_logic(delta)
+        super().main_logic(delta)
 
 class PausedGameState(GameState):
     def __init__(self, game_object : 'Game', previous : GameState):
