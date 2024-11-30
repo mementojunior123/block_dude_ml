@@ -18,7 +18,7 @@ class GameState:
     def __init__(self, game_object : 'Game'):
         self.game = game_object
 
-    def update(self, delta : float):
+    def main_logic(self, delta : float):
         pass
 
     def pause(self):
@@ -28,17 +28,45 @@ class GameState:
         pass
 
 class NormalGameState(GameState):
-    def update(self, delta : float):
+    def main_logic(self, delta : float):
         pass
 
     def pause(self):
-        if not self.active: return
+        if not self.game.active: return
+        self.game.game_timer.pause()
+        window_size = core_object.main_display.get_size()
+        pause_ui1 = BrightnessOverlay(-60, pygame.Rect(0,0, *window_size), 0, 'pause_overlay', zindex=999)
+        pause_ui2 = TextSprite(pygame.Vector2(window_size[0] // 2, window_size[1] // 2), 'center', 0, 'Paused', 'pause_text', None, None, 1000,
+                               (self.game.font_70, 'White', False), ('Black', 2), colorkey=(0, 255, 0))
+        core_object.main_ui.add(pause_ui1)
+        core_object.main_ui.add(pause_ui2)
         self.game.state = PausedGameState(self.game)
 
-class PausedGameState(GameState):
-    pass
+class MapEditorGameState(NormalGameState):
+    def main_logic(self, delta : float):
+        return super().main_logic(delta)
 
+class PausedGameState(GameState):
+    def __init__(self, game_object : 'Game', previous : GameState):
+        super().__init__(game_object)
+        self.previous_state = previous
+    
+    def unpause(self):
+        if not self.game.active: return
+        self.game.game_timer.unpause()
+        pause_ui1 = core_object.main_ui.get_sprite('pause_overlay')
+        pause_ui2 = core_object.main_ui.get_sprite('pause_text')
+        if pause_ui1: core_object.main_ui.remove(pause_ui1)
+        if pause_ui2: core_object.main_ui.remove(pause_ui2)
+        self.game.state = self.previous_state
 
 def runtime_imports():
     global Game
     from game.game_module import Game
+    global core_object
+    from core.core import core_object
+
+    #runtime imports for game classes
+    global game, TestPlayer      
+    import game.test_player
+    from game.test_player import TestPlayer
