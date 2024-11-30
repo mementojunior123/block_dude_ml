@@ -71,7 +71,7 @@ def validate_map(map : GameMap, raise_errors : bool = False) -> bool:
 
 def load_map(map_name : str, strict = False) -> SavedMap|None:
     try:
-        with open(f'maps/{map_name}.json', 'r') as file:
+        with open(f'non_pygame/maps/{map_name}.json', 'r') as file:
             map_data : SavedMap = json.load(file)
     except FileNotFoundError:
         print('Map does not exist!')
@@ -319,6 +319,7 @@ def interactive_test():
                 print("Illegal Move!")
 
 TEST_MAP : SavedMap = load_map('map_test')
+TEST_MAP2 : SavedMap = load_map('map_test2')
 
 if __name__ == '__main__':
     interactive_test()

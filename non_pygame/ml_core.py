@@ -26,6 +26,11 @@ def flatten_map(map : list[list[int]]) -> list[int]:
         flat += row
     return flat
 
+def flatten_map_gen(map : list[list[int]]):
+    for row in map:
+        for val in row:
+            yield val
+
 
 def sort_dict_by_values(input : dict, reverse : bool = True):
     return {k: v for k, v in sorted(input.items(), key=lambda item: item[1], reverse=reverse)}
@@ -41,15 +46,16 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
         ges.append(genome)
         players.append(bd_core.Game.from_saved_map(MAP_USED, copy_map=True))
     
-    for turn in range(40):
-        finished_players : set[int] = set()
-        for index, player in enumerate(players):
-            if index in finished_players: continue
+    #for turn in range(40):
+    #finished_players : set[int] = set()
+    for index, player in enumerate(players):
+        for turn in range(40):
+            #if index in finished_players: continue
             player_net = nets[index]
             player_genome = ges[index]
             verifications, actions = player.get_binds()
-            output : list[float] = player_net.activate([*flatten_map(player.map), player.player_x, player.player_y, 
-                                                       player.player_direction, player.player_holding_block])
+            output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
+                                                        player.player_direction, player.player_holding_block])
             output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
             sorted_output = sort_dict_by_values(output_dict, reverse=True)
             for action_type in sorted_output:
@@ -58,9 +64,10 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
                 break
             player_genome.fitness = get_fitness(player, turn)
             if player.game_won():
-                finished_players.add(index)
-        if len(finished_players) >= len(players):
-            break
+                break
+                #finished_players.add(index)
+        #if len(finished_players) >= len(players):
+            #break
                 
         
 def modify_config(config_path : str):
@@ -79,13 +86,13 @@ def run(config_path : str):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
     pop : neat.Population = neat.Population(config)
     
-    #pop.add_reporter(neat.StdOutReporter(True))
+    pop.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     #pop.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 50 generations.
-    winner = pop.run(eval_genomes, 199)
+    winner = pop.run(eval_genomes, 50)
 
     # show final stats
     print('\nBest genome:\n{!s}'.format(winner))
