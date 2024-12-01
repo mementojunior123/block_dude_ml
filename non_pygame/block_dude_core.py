@@ -13,10 +13,12 @@ class InvalidMapError(BaseException):
     pass
 
 class CellType(IntEnum):
+    '''Note that the player dosent actually exist within the map; the player enum is there for the sake of convienece.'''
     EMPTY = 0
     BRICK = 1
     BLOCK = 2
     DOOR = 3
+    PLAYER = 4
 
 class ActionType(IntEnum):
     UP = 0
@@ -68,6 +70,9 @@ def validate_map(map : GameMap, raise_errors : bool = False) -> bool:
         if raise_errors: raise InvalidMapError(f'Map has {door_count} doors instead of 1!')
         return False
     return True
+
+def get_map_size(map : SavedMap) -> tuple[int, int]:
+    return (len(map['map']), len(map['map'][0]))
 
 def load_map(map_name : str, strict = False) -> SavedMap|None:
     try:

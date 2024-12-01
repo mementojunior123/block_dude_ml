@@ -31,7 +31,7 @@ class Game:
 
         
 
-    def start_game(self, mode : str = 'test'):
+    def start_game(self, mode : str = 'MapEditor'):
         self.active = True
         self.game_timer = Timer(-1)
         self.game_data = {}

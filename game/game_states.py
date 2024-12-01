@@ -81,9 +81,17 @@ class TestGameState(GameState):
 
 class MapEditorGameState(NormalGameState):
     MAP_SIZE : tuple[int, int] = (10,10)
-    MAP_SCALE : int = 20
+    MAP_SCALE : int = 50
     def __init__(self, game_object : 'Game'):
         self.game = game_object
+        empty_canvas : SavedMap = {
+            'map' : [[0 for _ in range(10)] for _ in range(10)],
+            'start_direction' : 1,
+            'start_x' : 1,
+            'start_y' : 8
+            }
+        empty_canvas['map'][9][0] = 1
+        self.map = TileMap.spawn((480, 270), empty_canvas, self.MAP_SCALE)
 
     def main_logic(self, delta : float):
         pass
@@ -124,6 +132,9 @@ def runtime_imports():
     import game.test_player
     from game.test_player import TestPlayer
 
+    global Tile, TileMap, SavedMap
+    import game.map_sprites
+    from game.map_sprites import TileMap, Tile, SavedMap
 
 class GameStates:
     NormalGameState = NormalGameState

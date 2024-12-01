@@ -146,18 +146,19 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
                 
         
 def modify_config(config_path : str):
-    input_count : int = 4 + (len(MAP_USED['map'] - 1) * len(MAP_USED['map'][0] + 1))
+    input_count : int = 4 + (len(MAP_USED['map']) * len(MAP_USED['map'][0]))
     with open(config_path, 'r') as file:
         og_lines : list[str] = file.readlines()
     
     with open(config_path, 'w') as file:
         for og_line in og_lines:
             if "num_inputs" in og_line:
-                file.write(f"num_inputs              = {input_count}")
+                file.write(f"num_inputs              = {input_count}\n")
             else:
                 file.write(og_line)
 
 def run(config_path : str):
+    modify_config(config_path)
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
     pop : neat.Population = neat.Population(config)
     
