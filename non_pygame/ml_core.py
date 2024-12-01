@@ -13,7 +13,7 @@ from neat.population import Population
 import block_dude_core as bd_core
 from non_pygame.non_pygame_utils import stall
 
-MAP_USED : bd_core.SavedMap = bd_core.TEST_MAP
+MAP_USED : bd_core.SavedMap = bd_core.MAP3
 
 class PopulationInterface:
     def __init__(self, population : neat.Population, gens : int|None = 50):
@@ -168,7 +168,7 @@ def run(config_path : str):
     #pop.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 50 generations.
-    winner = run_interface(PopulationInterface(pop, 50))
+    winner = run_interface(PopulationInterface(pop, 199))
 
     # show final stats
     print('\nBest genome:\n{!s}'.format(winner))

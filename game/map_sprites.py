@@ -5,7 +5,7 @@ from core.core import core_object
 from utils.animation import Animation
 from utils.pivot_2d import Pivot2D
 from utils.helpers import load_alpha_to_colorkey
-from non_pygame.block_dude_core import CellType, SavedMap, get_map_size
+from non_pygame.block_dude_core import CellType, SavedMap, get_map_size, InvalidMapError
 
 
 class Tile(Sprite):
@@ -72,7 +72,8 @@ class Tile(Sprite):
         scale = self.current_map.scale
         OW = self.current_map.OUTLINE_WIDTH
         offset = scale + self.current_map.OUTLINE_WIDTH
-        topleft = (offset * self.grid_pos[0] + self.current_map.map_rect.left - OW * 4 - OW // 2, offset * self.grid_pos[1] + self.current_map.map_rect.top - OW * 4 - OW // 2)
+        topleft = (offset * self.grid_pos[0] + self.current_map.map_rect.left + (1), 
+                   offset * self.grid_pos[1] + self.current_map.map_rect.top + (1))
         self.move_rect('topleft', pygame.Vector2(topleft))
     
     def clean_instance(self):
@@ -84,7 +85,7 @@ class Tile(Sprite):
         self.zindex = None
 
 Sprite.register_class(Tile)
-for _ in range(100):
+for _ in range(200):
     Tile()
 
 class TileMap(Sprite):
@@ -102,7 +103,7 @@ class TileMap(Sprite):
         TileMap.inactive_elements.append(self)
 
     @classmethod
-    def spawn(cls, center : tuple[float, float], starting_map : SavedMap, map_scale : int) -> 'Tile':
+    def spawn(cls, center : tuple[float, float], starting_map : SavedMap, map_scale : int) -> 'TileMap':
         element = cls.inactive_elements[0]
 
         element.image = cls.NOTHING_SURF
@@ -114,11 +115,11 @@ class TileMap(Sprite):
         element.scale = map_scale
         element.player_direction = starting_map['start_direction']
         element.map_size = get_map_size(starting_map)
-        element.map_rect = pygame.rect.FRect(0, 0, map_scale * element.map_size[0], map_scale * element.map_size[1])
+        element.map_rect = pygame.rect.FRect(0, 0, (map_scale + element.OUTLINE_WIDTH) * element.map_size[0], (map_scale + element.OUTLINE_WIDTH) * element.map_size[1])
         element.map_rect.center = center
         element.tiles = []
         for y_level, row in enumerate(starting_map['map']):
-            new_row = [Tile.spawn([x, y_level], element, cell) for x, cell in enumerate(row)]
+            new_row = [Tile.spawn([x, y_level], element, CellType(cell)) for x, cell in enumerate(row)]
             element.tiles.append(new_row)
         element.tiles[starting_map['start_y']][starting_map['start_x']].change_type(CellType.PLAYER)
 
@@ -128,6 +129,24 @@ class TileMap(Sprite):
 
         cls.unpool(element)
         return element
+    
+    def to_saved_map(self) -> SavedMap:
+        player_coords : tuple[int, int]|None = None
+        for y, row in enumerate(self.tiles):
+            for x, cell in enumerate(row):
+                if cell.tile_type == CellType.PLAYER:
+                    player_coords = (x,y)
+                    break
+            if player_coords: break
+        if not player_coords: raise InvalidMapError('No player found!')
+        grid_map = [[(tile.tile_type.value if tile.tile_type.value != 4 else 0) for tile in row] for row in self.tiles]
+        return {
+            'map' : grid_map,
+            'start_x' : player_coords[0],
+            'start_y' : player_coords[1],
+            'start_direction' : self.player_direction
+        }
+        
     
     def make_grid(self) -> pygame.Surface:
         new_surf : pygame.Surface = pygame.surface.Surface(((self.map_size[0]) * (self.scale + self.OUTLINE_WIDTH) + self.OUTLINE_WIDTH,

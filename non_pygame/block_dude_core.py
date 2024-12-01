@@ -82,8 +82,20 @@ def load_map(map_name : str, strict = False) -> SavedMap|None:
         print('Map does not exist!')
     validate_map(map_data['map'], raise_errors=True)
     return map_data
-    
 
+def save_map(file_path : str, map : SavedMap) -> bool:
+    with open(file_path, 'w') as file:
+        file.write('{\n')
+        file.write('"map" : [\n')
+        for row in map['map']:
+            if row is map['map'][-1]: break
+            file.write(f'{str(row)},\n')
+        file.write(f'{str(map['map'][-1])}\n')
+        file.write(f'],\n')
+        file.write(f'"start_x" : {map["start_x"]},\n')
+        file.write(f'"start_y" : {map["start_y"]},\n')
+        file.write(f'"start_direction" : {map["start_direction"]}\n')
+        file.write('\t}')
 class Game:
     def __init__(self, starting_map : list[list[int]], start_player_pos : list[int, int], start_orientation : int = 1):
         if not validate_map(starting_map): raise InvalidMapError('Map isnt valid!')
@@ -325,6 +337,7 @@ def interactive_test():
 
 TEST_MAP : SavedMap = load_map('map_test')
 TEST_MAP2 : SavedMap = load_map('map_test2')
+MAP3 : SavedMap = load_map('map3')
 
 if __name__ == '__main__':
     interactive_test()

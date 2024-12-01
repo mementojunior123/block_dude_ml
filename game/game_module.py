@@ -53,6 +53,7 @@ class Game:
         core_object.event_manager.bind(pygame.MOUSEBUTTONDOWN, self.handle_mouse_event)
         core_object.event_manager.bind(pygame.MOUSEBUTTONUP, self.handle_mouse_event)
         core_object.event_manager.bind(pygame.MOUSEMOTION, self.handle_mouse_event)
+        core_object.event_manager.bind(Sprite.SPRITE_CLICKED, self.handle_mouse_event)
 
     def remove_connections(self):
         core_object.event_manager.unbind(pygame.KEYDOWN, self.handle_key_event)
@@ -61,6 +62,7 @@ class Game:
         core_object.event_manager.unbind(pygame.MOUSEBUTTONDOWN, self.handle_mouse_event)
         core_object.event_manager.unbind(pygame.MOUSEBUTTONUP, self.handle_mouse_event)
         core_object.event_manager.unbind(pygame.MOUSEMOTION, self.handle_mouse_event)
+        core_object.event_manager.unbind(Sprite.SPRITE_CLICKED, self.handle_mouse_event)
 
     def handle_key_event(self, event : pygame.Event):
         self.state.handle_key_event(event)
@@ -69,7 +71,7 @@ class Game:
         self.state.handle_mouse_event(event)
 
     def main_logic(self, delta : float):
-        pass
+        self.state.main_logic(delta)
     
     def pause(self):
         if not self.active: return

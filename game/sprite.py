@@ -365,7 +365,7 @@ class Sprite:
             if len(hit) == 0: return
             hit.sort(key = lambda sprite : sprite.zindex)
             new_event = pygame.event.Event(Sprite.SPRITE_CLICKED, {'main_hit' : hit[-1], 'all_hit' : hit, 'pos' : press_pos,
-                                                                   'finger_id' : -1})
+                                                                   'finger_id' : -1, 'button' : event.button})
             pygame.event.post(new_event)
     
     @classmethod
@@ -378,7 +378,7 @@ class Sprite:
             if len(hit) == 0: return
             hit.sort(key = lambda sprite : sprite.zindex)
             new_event = pygame.event.Event(Sprite.SPRITE_CLICKED, {'main_hit' : hit[-1], 'all_hit' : hit, 'pos' : press_pos,
-                                                                   'finger_id' : event.finger_id})
+                                                                   'finger_id' : event.finger_id, 'button' : -1})
             pygame.event.post(new_event)
     
     @classmethod
