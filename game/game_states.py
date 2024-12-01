@@ -3,6 +3,7 @@ from typing import Any
 from math import floor
 from random import shuffle, choice
 import random
+from enum import Enum
 import utils.tween_module as TweenModule
 from utils.ui.ui_sprite import UiSprite
 from utils.ui.textbox import TextBox
@@ -27,6 +28,9 @@ class GameState:
     def unpause(self):
         pass
 
+    def handle_key_event(self, event : pygame.Event):
+        pass
+
 class NormalGameState(GameState):
     def main_logic(self, delta : float):
         pass
@@ -41,6 +45,10 @@ class NormalGameState(GameState):
         core_object.main_ui.add(pause_ui1)
         core_object.main_ui.add(pause_ui2)
         self.game.state = PausedGameState(self.game)
+    
+    def handle_key_event(self, event : pygame.Event):
+        if event.type == pygame.K_p:
+            self.pause()
 
 class MapEditorGameState(NormalGameState):
     def main_logic(self, delta : float):
@@ -60,6 +68,10 @@ class PausedGameState(GameState):
         if pause_ui2: core_object.main_ui.remove(pause_ui2)
         self.game.state = self.previous_state
 
+    def handle_key_event(self, event : pygame.Event):
+        if event.type == pygame.K_p:
+            self.unpause()
+
 def runtime_imports():
     global Game
     from game.game_module import Game
@@ -70,3 +82,9 @@ def runtime_imports():
     global game, TestPlayer      
     import game.test_player
     from game.test_player import TestPlayer
+
+
+class GameStates(Enum):
+    NormalGameState = NormalGameState
+    MapEditorGameState = MapEditorGameState
+    PausedGameState = PausedGameState

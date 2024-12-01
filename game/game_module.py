@@ -13,7 +13,7 @@ from utils.my_timer import Timer
 from game.sprite import Sprite
 from utils.helpers import average, random_float
 from utils.ui.brightness_overlay import BrightnessOverlay
-from game.game_states import GameState
+from game.game_states import GameState, GameStates
 
 class GameStates:
     def __init__(self) -> None:

@@ -2,15 +2,90 @@ import os
 from typing import Callable
 from time import sleep
 import sys
+from six import itervalues, iteritems
+from neat.population import CompleteExtinctionException
 sys.path.append(".")
 import neat
 import neat.config
+from neat.config import Config as NeatConfig
 import neat.population
+from neat.population import Population
 import block_dude_core as bd_core
 from non_pygame.non_pygame_utils import stall
 
 MAP_USED : bd_core.SavedMap = bd_core.TEST_MAP
 
+class PopulationInterface:
+    def __init__(self, population : neat.Population, gens : int|None = 50):
+        self.pop = population
+        self.current_generation : int = 0
+        self.max_generations : int|None = gens
+
+
+    def start_running(self):
+        pop = self.pop
+        if pop.config.no_fitness_termination and (self.end_generation is None):
+            raise RuntimeError("Cannot have no generational limit with no fitness termination")
+    
+    def start_generation(self):
+        self.pop.reporters.start_generation(self.pop.generation)
+    
+    def end_generation(self):
+        pop = self.pop
+        # Gather and report statistics.
+        best = None
+        for g in itervalues(pop.population):
+            if best is None or g.fitness > best.fitness:
+                best = g
+        pop.reporters.post_evaluate(pop.config, pop.population, pop.species, best)
+
+        # Track the best genome ever seen.
+        if pop.best_genome is None or best.fitness > pop.best_genome.fitness:
+            pop.best_genome = best
+
+        if not pop.config.no_fitness_termination:
+            # End if the fitness threshold is reached.
+            fv = pop.fitness_criterion(g.fitness for g in itervalues(pop.population))
+            if fv >= pop.config.fitness_threshold:
+                pop.reporters.found_solution(pop.config, pop.generation, best)
+                self.current_generation = self.max_generations
+                return
+
+        # Create the next generation from the current generation.
+        pop.population = pop.reproduction.reproduce(pop.config, pop.species,
+                                                        pop.config.pop_size, pop.generation)
+
+        # Check for complete extinction.
+        if not pop.species.species:
+            pop.reporters.complete_extinction()
+
+            # If requested by the user, create a completely new population,
+            # otherwise raise an exception.
+            if pop.config.reset_on_extinction:
+                pop.population = pop.reproduction.create_new(pop.config.genome_type,
+                                                                pop.config.genome_config,
+                                                                pop.config.pop_size)
+            else:
+                raise CompleteExtinctionException()
+
+        # Divide the new population into species.
+        pop.species.speciate(pop.config, pop.population, pop.generation)
+
+        pop.reporters.end_generation(pop.config, pop.population, pop.species)
+
+        pop.generation += 1
+        self.current_generation += 1
+    
+    def isover(self):
+        return self.current_generation >= self.max_generations
+    
+    def end_run(self) -> neat.DefaultGenome:
+        pop = self.pop
+        if pop.config.no_fitness_termination:
+            pop.reporters.found_solution(pop.config, pop.generation, pop.best_genome)
+
+        return pop.best_genome
+    
 def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
     door_x, door_y = game.door_coords
     dist : float = float(abs(game.player_x - door_x) + abs(game.player_y - door_y))
@@ -92,12 +167,24 @@ def run(config_path : str):
     #pop.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 50 generations.
-    winner = pop.run(eval_genomes, 50)
+    winner = run_interface(PopulationInterface(pop, 50))
 
     # show final stats
     print('\nBest genome:\n{!s}'.format(winner))
     stall()
     show_genome_playing(winner, config)
+
+
+def run_interface(ipop : 'PopulationInterface') -> neat.DefaultGenome:
+    ipop.start_running()
+    while True:
+        ipop.start_generation()
+        eval_genomes(list(iteritems(ipop.pop.population)), ipop.pop.config)
+        ipop.end_generation()
+        if ipop.isover(): break
+    winner = ipop.end_run()
+    return winner
+
 
 def show_genome_playing(genome : neat.DefaultGenome, config : neat.config.Config, playback_speed : float = 5, max_turn : int = 100, 
                         intro_text : str = 'The best genome is now playing!'):
@@ -138,3 +225,5 @@ if __name__ == '__main__':
     local_path : str = os.path.dirname(__file__)
     config_path : str = os.path.join(local_path, "config-feedforward.txt")
     run(config_path)
+
+
