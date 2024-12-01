@@ -31,6 +31,9 @@ class GameState:
     def handle_key_event(self, event : pygame.Event):
         pass
 
+    def handle_mouse_event(self, event : pygame.Event):
+        pass
+
 class NormalGameState(GameState):
     def main_logic(self, delta : float):
         pass
@@ -44,15 +47,52 @@ class NormalGameState(GameState):
                                (self.game.font_70, 'White', False), ('Black', 2), colorkey=(0, 255, 0))
         core_object.main_ui.add(pause_ui1)
         core_object.main_ui.add(pause_ui2)
-        self.game.state = PausedGameState(self.game)
+        self.game.state = PausedGameState(self.game, self)
     
     def handle_key_event(self, event : pygame.Event):
-        if event.type == pygame.K_p:
-            self.pause()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_p:
+                self.pause()
+
+class TestGameState(GameState):
+    def __init__(self, game_object : 'Game'):
+        super().__init__(game_object)
+        player : TestPlayer = TestPlayer.spawn(pygame.Vector2(random.randint(0, 960),random.randint(0, 540)))
+
+    def main_logic(self, delta : float):
+        pass
+
+    def pause(self):
+        if not self.game.active: return
+        self.game.game_timer.pause()
+        window_size = core_object.main_display.get_size()
+        pause_ui1 = BrightnessOverlay(-60, pygame.Rect(0,0, *window_size), 0, 'pause_overlay', zindex=999)
+        pause_ui2 = TextSprite(pygame.Vector2(window_size[0] // 2, window_size[1] // 2), 'center', 0, 'Paused', 'pause_text', None, None, 1000,
+                               (self.game.font_70, 'White', False), ('Black', 2), colorkey=(0, 255, 0))
+        core_object.main_ui.add(pause_ui1)
+        core_object.main_ui.add(pause_ui2)
+        self.game.state = PausedGameState(self.game, self)
+    
+    def handle_key_event(self, event : pygame.Event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_p:
+                self.pause()
+
 
 class MapEditorGameState(NormalGameState):
+    MAP_SIZE : tuple[int, int] = (10,10)
+    MAP_SCALE : int = 20
+    def __init__(self, game_object : 'Game'):
+        self.game = game_object
+
     def main_logic(self, delta : float):
-        super().main_logic(delta)
+        pass
+    
+    def handle_key_event(self, event):
+        super().handle_key_event(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_o:
+                pass
 
 class PausedGameState(GameState):
     def __init__(self, game_object : 'Game', previous : GameState):
@@ -69,8 +109,9 @@ class PausedGameState(GameState):
         self.game.state = self.previous_state
 
     def handle_key_event(self, event : pygame.Event):
-        if event.type == pygame.K_p:
-            self.unpause()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_p:
+                self.unpause()
 
 def runtime_imports():
     global Game
@@ -84,7 +125,8 @@ def runtime_imports():
     from game.test_player import TestPlayer
 
 
-class GameStates(Enum):
+class GameStates:
     NormalGameState = NormalGameState
     MapEditorGameState = MapEditorGameState
     PausedGameState = PausedGameState
+    TestGameState = TestGameState

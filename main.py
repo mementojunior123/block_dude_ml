@@ -47,6 +47,8 @@ core.set_brightness(core.settings.info['Brightness'])
 
 core.menu.init()
 core.game.init()
+import game.game_states as game_state_module
+game_state_module.runtime_imports()
 
 clock = pygame.Clock()
 font_40 = pygame.font.Font('assets/fonts/Pixeltype.ttf', 40)
@@ -114,7 +116,7 @@ async def main():
             core.menu.update(core.dt)
             core.menu.render(window)
         else:
-            if core.game.state != core.game.STATES.paused:
+            if not isinstance(core.game.state, core.game.STATES.PausedGameState):
                 Sprite.update_all_sprites(core.dt)
                 Sprite.update_all_registered_classes(core.dt)
                 core.game.main_logic(core.dt)

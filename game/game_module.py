@@ -15,13 +15,6 @@ from utils.helpers import average, random_float
 from utils.ui.brightness_overlay import BrightnessOverlay
 from game.game_states import GameState, GameStates
 
-class GameStates:
-    def __init__(self) -> None:
-        self.transition = 'Transition'
-        self.normal = 'Normal'
-        self.paused = 'Paused'
-
-
 class Game:
     font_40 = pygame.Font('assets/fonts/Pixeltype.ttf', 40)
     font_50 = pygame.Font('assets/fonts/Pixeltype.ttf', 50)
@@ -29,67 +22,65 @@ class Game:
     font_70 = pygame.Font('assets/fonts/Pixeltype.ttf', 70)
     
     def __init__(self) -> None:
-        self.STATES : GameStates = GameStates()
+        self.STATES = GameStates
 
         self.active : bool = False
-        self.state : None|str = None
-        self.prev_state : None|str = None
+        self.state : None|GameState = None
         self.game_timer : Timer|None = None
         self.game_data : dict|None = {}
 
         
 
-    def start_game(self):
+    def start_game(self, mode : str = 'test'):
         self.active = True
-        self.state = self.STATES.normal
-        self.prev_state = None
         self.game_timer = Timer(-1)
         self.game_data = {}
         self.make_connections()
 
-        player : TestPlayer = TestPlayer.spawn(pygame.Vector2(random.randint(0, 960),random.randint(0, 540)))
+        if mode == 'test':
+            self.state = self.STATES.TestGameState(self)
+        elif mode == 'MapEditor':
+            self.state = self.STATES.MapEditorGameState(self)
+        
+
+        
         #Setup varaibles
 
     def make_connections(self):
         core_object.event_manager.bind(pygame.KEYDOWN, self.handle_key_event)
+        core_object.event_manager.bind(pygame.KEYUP, self.handle_key_event)
+
+        core_object.event_manager.bind(pygame.MOUSEBUTTONDOWN, self.handle_mouse_event)
+        core_object.event_manager.bind(pygame.MOUSEBUTTONUP, self.handle_mouse_event)
+        core_object.event_manager.bind(pygame.MOUSEMOTION, self.handle_mouse_event)
 
     def remove_connections(self):
         core_object.event_manager.unbind(pygame.KEYDOWN, self.handle_key_event)
+        core_object.event_manager.unbind(pygame.KEYUP, self.handle_key_event)
+
+        core_object.event_manager.unbind(pygame.MOUSEBUTTONDOWN, self.handle_mouse_event)
+        core_object.event_manager.unbind(pygame.MOUSEBUTTONUP, self.handle_mouse_event)
+        core_object.event_manager.unbind(pygame.MOUSEMOTION, self.handle_mouse_event)
 
     def handle_key_event(self, event : pygame.Event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_p:
-                if self.state == self.STATES.paused:
-                    self.unpause()
-                elif self.state == self.STATES.normal:
-                    self.pause()
+        self.state.handle_key_event(event)
+    
+    def handle_mouse_event(self, event : pygame.Event):
+        self.state.handle_mouse_event(event)
 
     def main_logic(self, delta : float):
         pass
     
     def pause(self):
         if not self.active: return
-        if self.state == self.STATES.paused: return 
-        self.game_timer.pause()
-        window_size = core_object.main_display.get_size()
-        pause_ui1 = BrightnessOverlay(-60, pygame.Rect(0,0, *window_size), 0, 'pause_overlay', zindex=999)
-        pause_ui2 = TextSprite(pygame.Vector2(window_size[0] // 2, window_size[1] // 2), 'center', 0, 'Paused', 'pause_text', None, None, 1000,
-                               (self.font_70, 'White', False), ('Black', 2), colorkey=(0, 255, 0))
-        core_object.main_ui.add(pause_ui1)
-        core_object.main_ui.add(pause_ui2)
-        self.prev_state = self.state
-        self.state = self.STATES.paused
+        self.state.pause()
     
     def unpause(self):
         if not self.active: return
-        if self.state != self.STATES.paused: return
-        self.game_timer.unpause()
-        pause_ui1 = core_object.main_ui.get_sprite('pause_overlay')
-        pause_ui2 = core_object.main_ui.get_sprite('pause_text')
-        if pause_ui1: core_object.main_ui.remove(pause_ui1)
-        if pause_ui2: core_object.main_ui.remove(pause_ui2)
-        self.state = self.prev_state
-        self.prev_state = None
+        self.state.unpause()
+    
+    def is_paused(self):
+        return not isinstance(self.state, self.STATES.PausedGameState)
     
     
     def fire_gameover_event(self, goto_result_screen : bool = True):
@@ -104,7 +95,6 @@ class Game:
         #Cleanup basic variables
         self.active = False
         self.state = None
-        self.prev_state = None
         self.game_timer = None
         self.game_data.clear()
 
