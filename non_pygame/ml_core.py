@@ -2,6 +2,7 @@ import os
 from typing import Callable
 from time import sleep
 import sys
+import pickle
 from six import itervalues, iteritems
 from neat.population import CompleteExtinctionException
 sys.path.append(".")
@@ -191,7 +192,7 @@ def run(config_path : str):
     #pop.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 50 generations.
-    winner = run_interface(PopulationInterface(pop, 199))
+    winner = run_interface(PopulationInterface(pop, 30))
 
     # show final stats
     print('\nBest genome:')
@@ -199,6 +200,10 @@ def run(config_path : str):
     print(f'Fitness: {winner.fitness}')
     stall()
     show_genome_playing(winner, config)
+    with open('non_pygame/winners/winner1', 'wb') as file:
+        pass
+        #pickle.dump((winner, config), file)
+    
 
 def get_pop_runner(config_path : str, map_used : bd_core.SavedMap, generations : int) -> PopulationInterface:
     modify_config(config_path)
@@ -255,6 +260,10 @@ def show_genome_playing(genome : neat.DefaultGenome, config : neat.config.Config
     
 
 if __name__ == '__main__':
+    with open('non_pygame/winners/winner1', 'rb') as file:
+        pass
+        #previous_winner, previous_config = pickle.load(file)
+    #show_genome_playing(previous_winner, previous_config, intro_text='The previous best genome is now playing!')
     local_path : str = os.path.dirname(__file__)
     config_path : str = os.path.join(local_path, "config-feedforward.txt")
     run(config_path)
