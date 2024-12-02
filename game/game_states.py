@@ -158,7 +158,12 @@ class MapEditorGameState(NormalGameState):
             return
         self.cursor.surf = pygame.transform.scale(Tile.TEXTURES[CellType(new_mode.value)], (50, 50))
 
-                    
+class SimulationGameState(NormalGameState):
+    def __init__(self, game_object):
+        super().__init__(game_object)
+
+    def main_logic(self, delta):
+        return super().main_logic(delta)                   
 
 class PausedGameState(GameState):
     def __init__(self, game_object : 'Game', previous : GameState):
