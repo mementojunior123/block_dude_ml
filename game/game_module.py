@@ -70,7 +70,7 @@ class Game:
     def handle_mouse_event(self, event : pygame.Event):
         self.state.handle_mouse_event(event)
 
-    def main_logic(self, delta : float):
+    def update(self, delta : float):
         self.state.main_logic(delta)
     
     def pause(self):

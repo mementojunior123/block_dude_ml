@@ -6,6 +6,7 @@ from utils.animation import Animation
 from utils.pivot_2d import Pivot2D
 from utils.helpers import load_alpha_to_colorkey
 from non_pygame.block_dude_core import CellType, SavedMap, get_map_size, InvalidMapError
+import non_pygame.block_dude_core as bd_core
 
 
 class Tile(Sprite):
@@ -163,6 +164,7 @@ class TileMap(Sprite):
         return new_surf
     
     def update(self, delta: float):
+        if not isinstance(core_object.game.state, core_object.game.STATES.MapEditorGameState): return
         keyboard_map = pygame.key.get_pressed()
         move_vector : pygame.Vector2 = pygame.Vector2(0,0)
         speed : int = 5
@@ -178,6 +180,25 @@ class TileMap(Sprite):
         self.position -= move_vector * speed * delta
         self.map_rect.center = round(self.position)
         self.align_rect()
+    
+    def move_to(self, new_pos : pygame.Vector2):
+        self.position = new_pos
+        self.map_rect.center = round(self.position)
+        self.align_rect()
+    
+    def move_by(self, offset : pygame.Vector2):
+        self.move_to(self.position - offset) #We need to do a negation to give the impression the camera is moving instead of the map
+    
+    def synchronise_with_player(self, player : bd_core.Game):
+        self.player_direction = player.player_direction
+        player_coords = (player.player_x, player.player_y)
+        for y, row in enumerate(player.map):
+            for x, game_cell in enumerate(row):
+                if game_cell != self.tiles[y][x].tile_type.value:
+                    self.tiles[y][x].change_type(CellType(game_cell))
+        self.tiles[player_coords[1]][player_coords[0]].change_type(CellType.PLAYER)
+        if player.player_holding_block:
+            self.tiles[player_coords[1] - 1][player_coords[0]].change_type(CellType.BLOCK)
     
     def clean_instance(self):
         self.image = None

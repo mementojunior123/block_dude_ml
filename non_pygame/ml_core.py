@@ -88,12 +88,18 @@ class PopulationInterface:
     
 def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
     door_x, door_y = game.door_coords
-    dist : float = float(abs(game.player_x - door_x) + abs(game.player_y - door_y))
+    dist : float = game.get_dist()
     score : float = 80.0 - 5 * dist
     if door_x == game.player_x and door_y == game.player_y:
-        game_win_score_bonus : float = 50.0 - turn_count
-        if game_win_score_bonus < 20.0: game_win_score_bonus = 20.0
+        game_win_score_bonus : float = 400.0 - turn_count
+        if game_win_score_bonus < 350.0: game_win_score_bonus = 350.0
         score += game_win_score_bonus
+    if game.player_holding_block:
+        score += 15.0
+        if game.down_legal():
+            score += 20.0
+        else:
+            score -= 30.0
     return score
 def flatten_map(map : list[list[int]]) -> list[int]:
     flat : list[int] = []
@@ -124,7 +130,12 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
     #for turn in range(40):
     #finished_players : set[int] = set()
     for index, player in enumerate(players):
+        box_experiment_bonus : float = 0.0
+        box_experiment_count : int = 0
+        box_carry_bonus : float = 0.0
+        box_carry_count : int = 0
         for turn in range(40):
+            start_dist : float = player.get_dist()
             #if index in finished_players: continue
             player_net = nets[index]
             player_genome = ges[index]
@@ -132,21 +143,33 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
             output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
                                                         player.player_direction, player.player_holding_block])
             output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
-            sorted_output = sort_dict_by_values(output_dict, reverse=True)
+            sorted_output : dict[int, float] = sort_dict_by_values(output_dict, reverse=True)
+            chosen_action : int
             for action_type in sorted_output:
                 if not verifications[action_type](): continue
                 actions[action_type]()
+                chosen_action = action_type
                 break
-            player_genome.fitness = get_fitness(player, turn)
+            end_dist : float = player.get_dist()
+            if chosen_action in {bd_core.ActionType.LEFT.value, bd_core.ActionType.RIGHT.value}:
+                if player.player_holding_block:
+                    if (end_dist + 0.5) < start_dist:
+                        box_carry_count += 1
+                        box_carry_bonus += 6 if box_carry_count <= 5 else 0
+            if chosen_action == bd_core.ActionType.DOWN.value:
+                box_experiment_bonus += (6.0 - box_experiment_count) if (6.0 - box_experiment_count) > 0 else 0
+                box_experiment_count += 1
+            player_genome.fitness = get_fitness(player, turn) + box_experiment_bonus + box_carry_bonus
             if player.game_won():
-                break
+                player_genome.fitness += 20
                 #finished_players.add(index)
         #if len(finished_players) >= len(players):
             #break
                 
         
-def modify_config(config_path : str):
-    input_count : int = 4 + (len(MAP_USED['map']) * len(MAP_USED['map'][0]))
+def modify_config(config_path : str, used_map : bd_core.SavedMap|None = None):
+    if used_map is None: used_map = MAP_USED
+    input_count : int = 4 + (len(used_map['map']) * len(used_map['map'][0]))
     with open(config_path, 'r') as file:
         og_lines : list[str] = file.readlines()
     
@@ -171,9 +194,18 @@ def run(config_path : str):
     winner = run_interface(PopulationInterface(pop, 199))
 
     # show final stats
-    print('\nBest genome:\n{!s}'.format(winner))
+    print('\nBest genome:')
+    print(f'Key: {winner.key}')
+    print(f'Fitness: {winner.fitness}')
     stall()
     show_genome_playing(winner, config)
+
+def get_pop_runner(config_path : str, map_used : bd_core.SavedMap, generations : int) -> PopulationInterface:
+    modify_config(config_path)
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+    pop : neat.Population = neat.Population(config)
+    
+    return PopulationInterface(pop, generations)
 
 
 def run_interface(ipop : 'PopulationInterface') -> neat.DefaultGenome:

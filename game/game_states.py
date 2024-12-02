@@ -38,7 +38,8 @@ class GameState:
 
 class NormalGameState(GameState):
     def main_logic(self, delta : float):
-        pass
+        Sprite.update_all_sprites(delta)
+        Sprite.update_all_registered_classes(delta)
 
     def pause(self):
         if not self.game.active: return
@@ -56,13 +57,13 @@ class NormalGameState(GameState):
             if event.key == pygame.K_p:
                 self.pause()
 
-class TestGameState(GameState):
+class TestGameState(NormalGameState):
     def __init__(self, game_object : 'Game'):
         super().__init__(game_object)
         player : TestPlayer = TestPlayer.spawn(pygame.Vector2(random.randint(0, 960),random.randint(0, 540)))
 
     def main_logic(self, delta : float):
-        pass
+        super().main_logic(delta)
 
     def pause(self):
         if not self.game.active: return
@@ -87,7 +88,6 @@ class MapEditorMode(IntEnum):
     DOOR = 3
     PLAYER = 4
     
-
 class MapEditorGameState(NormalGameState):
     MAP_SIZE : tuple[int, int] = (10,10)
     MAP_SCALE : int = 50
@@ -108,6 +108,7 @@ class MapEditorGameState(NormalGameState):
         core_object.main_ui.add(self.cursor)
 
     def main_logic(self, delta : float):
+        super().main_logic(delta)
         self.cursor.rect.topleft = pygame.mouse.get_pos()
     
     def handle_key_event(self, event):

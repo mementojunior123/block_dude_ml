@@ -263,6 +263,12 @@ class Game:
         }
         return verifications, actions
 
+    def get_dist(self) -> float:
+        return float(abs(self.player_x - self.door_coords[0]) + abs(self.player_y - self.door_coords[1]))
+    
+    def get_dist_int(self) -> int:
+        return abs(self.player_x - self.door_coords[0]) + abs(self.player_y - self.door_coords[1])
+
 
 def render_terminal_gamestate(game_state : GameState):
     ressources : str = ' XOD'

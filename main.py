@@ -116,10 +116,7 @@ async def main():
             core.menu.update(core.dt)
             core.menu.render(window)
         else:
-            if not isinstance(core.game.state, core.game.STATES.PausedGameState):
-                Sprite.update_all_sprites(core.dt)
-                Sprite.update_all_registered_classes(core.dt)
-                core.game.main_logic(core.dt)
+            core.game.update(core.dt)
 
             window.fill((94,129,162))    
             Sprite.draw_all_sprites(window)
