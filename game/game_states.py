@@ -90,7 +90,7 @@ class MapEditorMode(IntEnum):
     
 class MapEditorGameState(NormalGameState):
     MAP_SIZE : tuple[int, int] = (10,10)
-    MAP_SCALE : int = 50
+    MAP_SCALE : int = 60
     def __init__(self, game_object : 'Game'):
         self.game = game_object
         empty_canvas : SavedMap = {

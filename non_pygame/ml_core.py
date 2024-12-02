@@ -156,11 +156,11 @@ def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config
                 if player.player_holding_block:
                     if (end_dist + 0.5) < start_dist:
                         box_carry_count += 1
-                        box_carry_bonus += 6 if box_carry_count <= 5 else 0
+                        box_carry_bonus += 6 if box_carry_count <= 2 else 0
             if chosen_action == bd_core.ActionType.DOWN.value:
-                box_experiment_bonus += (6.0 - box_experiment_count) if (6.0 - box_experiment_count) > 0 else 0
+                box_experiment_bonus += (3.0 - box_experiment_count) if (3.0 - box_experiment_count) > 0 else 0
                 box_experiment_count += 1
-            player_genome.fitness = get_fitness(player, turn) + box_experiment_bonus + box_carry_bonus
+            player_genome.fitness = get_fitness(player, turn) + box_experiment_bonus# + box_carry_bonus
             if player.game_won():
                 player_genome.fitness += 20
                 #finished_players.add(index)
@@ -192,7 +192,7 @@ def run(config_path : str):
     #pop.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 50 generations.
-    winner = run_interface(PopulationInterface(pop, 30))
+    winner = run_interface(PopulationInterface(pop, 199))
 
     # show final stats
     print('\nBest genome:')
@@ -206,7 +206,7 @@ def run(config_path : str):
     
 
 def get_pop_runner(config_path : str, map_used : bd_core.SavedMap, generations : int) -> PopulationInterface:
-    modify_config(config_path)
+    modify_config(config_path, map_used)
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
     pop : neat.Population = neat.Population(config)
     
