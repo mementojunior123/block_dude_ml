@@ -36,7 +36,7 @@ class Game:
 
         
 
-    def start_game(self, mode : str = 'MapEditor'):
+    def start_game(self, mode : str = 'Sim'):
         self.active = True
         self.game_timer = Timer(-1)
         self.game_data = {}
@@ -52,8 +52,8 @@ class Game:
             ml_core.modify_config(config_path)
             config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
             pop : neat.Population = neat.Population(config)
-            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=100)
-            map_used = bd_core.load_map('map3')
+            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=200)
+            map_used = bd_core.load_map('map4')
             self.state = self.STATES.SimulationGameState(self, ipop, config, map_used)
             pass
         

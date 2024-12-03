@@ -20,6 +20,7 @@ class GenomeReplay(TypedDict):
     genome : neat.DefaultGenome
     config : neat.Config
     map_used : bd_core.SavedMap
+    net_used : neat.nn.FeedForwardNetwork
 
 class GenomeEvaluator:
     def __init__(self, genomes : list[tuple[int, neat.DefaultGenome]], config : neat.Config, the_map_used : bd_core.SavedMap):
@@ -123,7 +124,7 @@ class PopulationInterface:
         if pop.config.no_fitness_termination:
             pop.reporters.found_solution(pop.config, pop.generation, pop.best_genome)
 
-        return pop.best_genome
+        return self.current_best_genome
     
 
 def flatten_map(map : list[list[int]]) -> list[int]:
@@ -161,11 +162,12 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
     genome = genome_arg[1]
     genome.fitness = 0
     if used_map is None: used_map = MAP_USED
-    player = bd_core.Game.from_saved_map(MAP_USED, copy_map=True)
+    player = bd_core.Game.from_saved_map(used_map, copy_map=True)
     player_net = neat.nn.FeedForwardNetwork.create(genome, config)
     box_carry_start_dist : float|None = None
     box_carry_bonus : float = 0.0
     verifications, actions = player.get_binds()
+    genome.net_used = player_net
     for turn in range(40):
         start_dist : float = player.get_dist()        
         output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
@@ -180,12 +182,12 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
             break
         end_dist : float = player.get_dist()
         if (end_dist + 0.5) < start_dist:
-            genome.fitness += 1
+            genome.fitness += 1.5
         if chosen_action == bd_core.ActionType.DOWN.value:
             if not player.player_holding_block:
                 box_carry_end_dist = player.get_facing_dist()
                 progress : float = box_carry_start_dist - box_carry_end_dist
-                box_carry_bonus += 6 * progress
+                box_carry_bonus += 8 * progress
                 box_carry_start_dist = None
             else:
                 box_carry_start_dist = player.get_facing_dist()
@@ -257,9 +259,10 @@ def run_interface(ipop : 'PopulationInterface') -> neat.DefaultGenome:
 
 
 def show_genome_playing(genome : neat.DefaultGenome, config : neat.config.Config, playback_speed : float = 5, max_turn : int = 100, 
-                        intro_text : str = 'The best genome is now playing!'):
+                        intro_text : str = 'The best genome is now playing!', used_map : bd_core.SavedMap|None = None):
+    if used_map is None: used_map = MAP_USED
     net = neat.nn.FeedForwardNetwork.create(genome, config)
-    player = bd_core.Game.from_saved_map(MAP_USED, copy_map=True)
+    player = bd_core.Game.from_saved_map(used_map, copy_map=True)
     bd_core.clear_console()
     print(intro_text)
     stall()

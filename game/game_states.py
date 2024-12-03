@@ -205,9 +205,10 @@ class SimulationGameState(NormalGameState):
         self.continue_sim(total_budget)
         if self.sim_runner.isover():
             winner = self.sim_runner.end_run()
-            replay : ml_core.GenomeReplay = {'config' : self.config, 'genome' : winner, 'map_used' : self.map_used}
+            replay : ml_core.GenomeReplay = {'config' : self.config, 'genome' : winner, 'map_used' : self.map_used, 'net_used' : winner.net_used}
             Sprite.pool_all_sprites()
             core_object.main_ui.clear_all()
+            print(winner.fitness)
             core_object.game.state = ShowcaseGameState(self.game, replay)
 
     def continue_sim(self, frame_budget : float):
@@ -249,7 +250,7 @@ class ShowcaseGameState(NormalGameState):
         self.config = replay['config']
         self.current_turn : int = 0
         self.player : bd_core.Game = bd_core.Game.from_saved_map(self.map_used, copy_map=True)
-        self.net = neat.nn.FeedForwardNetwork.create(self.genome, self.config)
+        self.net = replay.get('net_used', None) or neat.nn.FeedForwardNetwork.create(self.genome, self.config)
         self.visual_map : TileMap = TileMap.spawn((480, 270), self.map_used, 75)
         self.visual_map.synchronise_with_player(self.player)
         self.action_timer : Timer = Timer(0.25, time_source=core_object.game.game_timer.get_time)
@@ -283,8 +284,9 @@ class ShowcaseGameState(NormalGameState):
             print("GG!")
             self.game.state = ShowcaseOverGameState(self.game)
         elif self.current_turn >= self.MAX_TURNS:
-            print("It run out of time...")
+            print("It ran out of time...")
             self.game.state = ShowcaseOverGameState(self.game)
+            #ml_core.show_genome_playing(self.genome, self.config, 5, 40, 'It ran out of time...', self.map_used)
 
 class ShowcaseOverGameState(NormalGameState):
     def __init__(self, game_object):
