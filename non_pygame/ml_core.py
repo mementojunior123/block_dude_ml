@@ -189,6 +189,13 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
                 progress : float = box_carry_start_dist - box_carry_end_dist
                 box_carry_bonus += 8 * progress
                 box_carry_start_dist = None
+                if (player.get_facing_player() == bd_core.CellType.BLOCK
+                and player.get_at(player.player_x + player.player_direction, player.player_y + 1) == bd_core.CellType.BLOCK):
+                    if progress < 0:
+                        box_carry_bonus -= 20
+                    else:
+                        box_carry_bonus -= 8 * progress
+                        box_carry_bonus -= 20
             else:
                 box_carry_start_dist = player.get_facing_dist()
         genome.fitness = get_fitness(player, turn) + box_carry_bonus
