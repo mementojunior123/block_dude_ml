@@ -1,4 +1,5 @@
 import pygame
+from time import perf_counter
 from typing import Any
 from math import floor
 from random import shuffle, choice
@@ -6,6 +7,10 @@ import random
 import json
 from enum import Enum, IntEnum
 from non_pygame.block_dude_core import CellType, save_map, load_map
+import non_pygame.block_dude_core as bd_core
+from non_pygame.ml_core import PopulationInterface
+import non_pygame.ml_core as ml_core
+import neat
 import utils.tween_module as TweenModule
 from utils.ui.ui_sprite import UiSprite
 from utils.ui.textbox import TextBox
@@ -159,11 +164,137 @@ class MapEditorGameState(NormalGameState):
         self.cursor.surf = pygame.transform.scale(Tile.TEXTURES[CellType(new_mode.value)], (50, 50))
 
 class SimulationGameState(NormalGameState):
+    def __init__(self, game_object : 'Game', sim_runner : PopulationInterface, config : neat.Config, map_used : 'SavedMap'):
+        super().__init__(game_object)
+        self.text_sprite_cycle_timer : Timer = Timer(0.5, self.game.game_timer.get_time)
+        self.current_amount_of_dots : int = 2
+        self.simulating_sprite  : TextSprite = TextSprite(pygame.Vector2(480, 270), 'center', 0, f'Simulating{self.current_amount_of_dots * '.'}', 
+                                       text_settings=(self.game.font_60, 'White', False), 
+                                 text_stroke_settings=('Black', 2), colorkey=(0, 255, 0))
+        self.escape_sprite : TextSprite = TextSprite(pygame.Vector2(25, 25), 'topleft', 0, 'Press ESC to exit', 
+                                   text_settings=(self.game.font_60, 'White', False), text_stroke_settings=('Black', 2), colorkey=(0, 255, 0))
+        
+        self.progress_sprite : TextSprite = TextSprite(pygame.Vector2(25, 515), 'bottomleft', 0, f'0/{sim_runner.max_generations}', 
+                                   text_settings=(self.game.font_60, 'White', False), text_stroke_settings=('Black', 2), colorkey=(0, 255, 0))
+        self.fitness_sprite : TextSprite = TextSprite(pygame.Vector2(935, 515), 'bottomright', 0, f'Best Fitness : None', 
+                                   text_settings=(self.game.font_60, 'White', False), text_stroke_settings=('Black', 2), colorkey=(0, 255, 0))
+        self.current_amount_of_dots : int = 2
+        core_object.main_ui.add(self.simulating_sprite)
+        core_object.main_ui.add(self.escape_sprite)
+        core_object.main_ui.add(self.progress_sprite)
+        core_object.main_ui.add(self.fitness_sprite)
+        self.sim_runner : PopulationInterface = sim_runner
+        self.sim_runner.start_running()
+        self.sim_runner.start_generation()
+        self.config : neat.Config = config
+        self.map_used : SavedMap = map_used
+        self.update_phase : int = 0
+        self.genome_evaluator : ml_core.GenomeEvaluator = ml_core.GenomeEvaluator(self.sim_runner.get_genome_list(), self.config, self.map_used)
+     
+        
+
+    def main_logic(self, delta : float):
+        super().main_logic(delta)
+        self.update_wait_text()
+        time_elapsed_since_frame_start : float = perf_counter() - core_object.last_dt_measurment #per counter is in seconds
+        target_FPS = 10
+        target_frame_time : float = 1 / target_FPS # in seconds
+        current_budget : float = target_frame_time - time_elapsed_since_frame_start
+        total_budget : float = max(current_budget - 0.05, 0.015)
+        #print(total_budget)
+        self.continue_sim(total_budget)
+        if self.sim_runner.isover():
+            winner = self.sim_runner.end_run()
+            replay : ml_core.GenomeReplay = {'config' : self.config, 'genome' : winner, 'map_used' : self.map_used}
+            Sprite.pool_all_sprites()
+            core_object.main_ui.clear_all()
+            core_object.game.state = ShowcaseGameState(self.game, replay)
+
+    def continue_sim(self, frame_budget : float):
+        timer : Timer = Timer(frame_budget, time_source=perf_counter)
+        while not timer.isover():
+            self.genome_evaluator.do_genome()
+            if self.genome_evaluator.isover():
+                self.sim_runner.end_generation()
+                self.update_progress_sprite()
+                if self.sim_runner.isover(): return
+                self.genome_evaluator = ml_core.GenomeEvaluator(self.sim_runner.get_genome_list(), self.config, self.map_used)
+                self.sim_runner.start_generation()
+
+    def update_wait_text(self):
+        if self.text_sprite_cycle_timer.isover():
+            self.text_sprite_cycle_timer.restart()
+            if self.current_amount_of_dots == 2:
+                self.current_amount_of_dots = 3
+            else:
+                self.current_amount_of_dots = 2
+            self.simulating_sprite.text = f'Simulating{self.current_amount_of_dots * '.'}'
+            self.simulating_sprite.rect = self.simulating_sprite.surf.get_rect(center=(480, 270))
+    
+    def update_progress_sprite(self):
+        the_text : str = f'{self.sim_runner.current_generation}/{self.sim_runner.max_generations}'
+        self.progress_sprite.text = the_text
+        self.progress_sprite.rect = self.progress_sprite.surf.get_rect(bottomleft=(25, 515))
+
+        the_text2 : str = f'Best Fitness : {self.sim_runner.current_best_genome.fitness}'
+        self.fitness_sprite.text = the_text2
+        self.fitness_sprite.rect = self.fitness_sprite.surf.get_rect(bottomright = (935, 515))
+
+class ShowcaseGameState(NormalGameState):
+    MAX_TURNS : int = 40
+    def __init__(self, game_object : 'Game', replay : ml_core.GenomeReplay):
+        super().__init__(game_object)
+        self.genome = replay['genome']
+        self.map_used = replay['map_used']
+        self.config = replay['config']
+        self.current_turn : int = 0
+        self.player : bd_core.Game = bd_core.Game.from_saved_map(self.map_used, copy_map=True)
+        self.net = neat.nn.FeedForwardNetwork.create(self.genome, self.config)
+        self.visual_map : TileMap = TileMap.spawn((480, 270), self.map_used, 75)
+        self.visual_map.synchronise_with_player(self.player)
+        self.action_timer : Timer = Timer(0.25, time_source=core_object.game.game_timer.get_time)
+        self.first_frame : bool = True
+    
+    def main_logic(self, delta : float):
+        super().main_logic(delta)
+        if self.first_frame:
+            self.action_timer.restart()
+            self.first_frame = False
+        if self.action_timer.isover():
+            self.action_timer.restart()
+            self.take_player_action()
+        self.visual_map.synchronise_with_player(self.player)   
+        self.visual_map.move_to(pygame.Vector2(480, 270))
+        
+
+    
+    def take_player_action(self):
+        verifications, actions = self.player.get_binds()
+        output : list[float] = self.net.activate([*ml_core.flatten_map(self.player.map), self.player.player_x, self.player.player_y, 
+                                                    self.player.player_direction, self.player.player_holding_block])
+        output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
+        sorted_output = ml_core.sort_dict_by_values(output_dict, reverse=True)
+        for action_type in sorted_output:
+            if not verifications[action_type](): continue
+            actions[action_type]()
+            break
+        self.current_turn += 1
+        if self.player.game_won():
+            print("GG!")
+            self.game.state = ShowcaseOverGameState(self.game)
+        elif self.current_turn >= self.MAX_TURNS:
+            print("It run out of time...")
+            self.game.state = ShowcaseOverGameState(self.game)
+
+class ShowcaseOverGameState(NormalGameState):
     def __init__(self, game_object):
         super().__init__(game_object)
-
-    def main_logic(self, delta):
-        return super().main_logic(delta)                   
+        self.wait_timer : Timer = Timer(3, time_source=core_object.game.game_timer.get_time)
+    
+    def main_logic(self, delta : float):
+        super().main_logic(delta)
+        if self.wait_timer.isover():
+            self.game.fire_gameover_event()
 
 class PausedGameState(GameState):
     def __init__(self, game_object : 'Game', previous : GameState):
@@ -204,3 +335,6 @@ class GameStates:
     MapEditorGameState = MapEditorGameState
     PausedGameState = PausedGameState
     TestGameState = TestGameState
+    SimulationGameState = SimulationGameState
+    ShowcaseGameState = ShowcaseGameState
+    ShowcaseOverGameState = ShowcaseOverGameState

@@ -72,7 +72,7 @@ def validate_map(map : GameMap, raise_errors : bool = False) -> bool:
     return True
 
 def get_map_size(map : SavedMap) -> tuple[int, int]:
-    return (len(map['map']), len(map['map'][0]))
+    return (len(map['map'][0]), len(map['map']), )
 
 def load_map(map_name : str, strict = False) -> SavedMap|None:
     try:
@@ -165,6 +165,10 @@ class Game:
         return False
     
     def left_legal(self) -> bool:
+        target_cell : CellType = self.get_facing_player()
+        if is_solid(target_cell):
+            if self.player_direction == -1:
+                return False
         return True
     
     def left(self) -> bool:
@@ -182,6 +186,10 @@ class Game:
         return True
     
     def right_legal(self) -> bool:
+        target_cell : CellType = self.get_facing_player()
+        if is_solid(target_cell):
+            if self.player_direction == 1:
+                return False
         return True
     
     def right(self) -> bool:
@@ -266,8 +274,18 @@ class Game:
     def get_dist(self) -> float:
         return float(abs(self.player_x - self.door_coords[0]) + abs(self.player_y - self.door_coords[1]))
     
+    def get_facing_dist(self) -> float:
+        return float(abs((self.player_x + self.player_direction) - self.door_coords[0]) + abs(self.player_y - self.door_coords[1]))
+    
     def get_dist_int(self) -> int:
         return abs(self.player_x - self.door_coords[0]) + abs(self.player_y - self.door_coords[1])
+    
+    def get_adjusted_dist(self) -> float:
+        if self.player_y > self.door_coords[1]:
+            y_diff : int = abs(self.player_y - self.door_coords[1]) * 2
+        else:
+            y_diff : int = abs(self.player_y - self.door_coords[1])
+        return float(abs(self.player_x - self.door_coords[0]) + y_diff)
 
 
 def render_terminal_gamestate(game_state : GameState):

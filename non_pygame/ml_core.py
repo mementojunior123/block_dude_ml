@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, TypedDict
 from time import sleep
 import sys
 import pickle
@@ -11,17 +11,55 @@ import neat.config
 from neat.config import Config as NeatConfig
 import neat.population
 from neat.population import Population
-import block_dude_core as bd_core
+import non_pygame.block_dude_core as bd_core
 from non_pygame.non_pygame_utils import stall
 
 MAP_USED : bd_core.SavedMap = bd_core.MAP3
+
+class GenomeReplay(TypedDict):
+    genome : neat.DefaultGenome
+    config : neat.Config
+    map_used : bd_core.SavedMap
+
+class GenomeEvaluator:
+    def __init__(self, genomes : list[tuple[int, neat.DefaultGenome]], config : neat.Config, the_map_used : bd_core.SavedMap):
+        self.genomes = genomes
+        self.config : neat.Config = config
+        self.map_used : bd_core.SavedMap = the_map_used
+        self.progress : int = 0
+        self.genome_count : int = len(genomes)
+    
+    def isover(self) -> bool:
+        return self.progress >= self.genome_count
+    
+    def do_genome(self):
+        if self.isover(): return
+        eval_genome(self.genomes[self.progress], self.config, self.map_used)
+        self.progress += 1
+
+
+def save_replay(file_path : str, replay : GenomeReplay):
+    with open(file_path, 'wb') as file:
+        pickle.dump(replay, file)
+
+def load_replay(file_path : str) -> GenomeReplay|None:
+    with open(file_path, 'rb') as file:
+        replay = pickle.load(file)
+    return replay
 
 class PopulationInterface:
     def __init__(self, population : neat.Population, gens : int|None = 50):
         self.pop = population
         self.current_generation : int = 0
         self.max_generations : int|None = gens
+        self.current_best_genome : neat.DefaultGenome|None = None
+    
+    def get_best_genome(self) -> neat.DefaultGenome:
+        sorted_key_list = sorted(self.pop.population, key = lambda k: self.pop.population[k].fitness)
+        return self.pop.population[sorted_key_list[-1]]
 
+    def get_genome_list(self) -> list[tuple[int, neat.DefaultGenome]]:
+        return list(iteritems(self.pop.population))
 
     def start_running(self):
         pop = self.pop
@@ -34,21 +72,21 @@ class PopulationInterface:
     def end_generation(self):
         pop = self.pop
         # Gather and report statistics.
-        best = None
+
         for g in itervalues(pop.population):
-            if best is None or g.fitness > best.fitness:
-                best = g
-        pop.reporters.post_evaluate(pop.config, pop.population, pop.species, best)
+            if self.current_best_genome is None or g.fitness > self.current_best_genome.fitness:
+                self.current_best_genome = g
+        pop.reporters.post_evaluate(pop.config, pop.population, pop.species, self.current_best_genome)
 
         # Track the best genome ever seen.
-        if pop.best_genome is None or best.fitness > pop.best_genome.fitness:
-            pop.best_genome = best
+        if pop.best_genome is None or self.current_best_genome.fitness > pop.best_genome.fitness:
+            pop.best_genome = self.current_best_genome
 
         if not pop.config.no_fitness_termination:
             # End if the fitness threshold is reached.
             fv = pop.fitness_criterion(g.fitness for g in itervalues(pop.population))
             if fv >= pop.config.fitness_threshold:
-                pop.reporters.found_solution(pop.config, pop.generation, best)
+                pop.reporters.found_solution(pop.config, pop.generation, self.current_best_genome)
                 self.current_generation = self.max_generations
                 return
 
@@ -87,21 +125,7 @@ class PopulationInterface:
 
         return pop.best_genome
     
-def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
-    door_x, door_y = game.door_coords
-    dist : float = game.get_dist()
-    score : float = 80.0 - 5 * dist
-    if door_x == game.player_x and door_y == game.player_y:
-        game_win_score_bonus : float = 400.0 - turn_count
-        if game_win_score_bonus < 350.0: game_win_score_bonus = 350.0
-        score += game_win_score_bonus
-    if game.player_holding_block:
-        score += 15.0
-        if game.down_legal():
-            score += 20.0
-        else:
-            score -= 30.0
-    return score
+
 def flatten_map(map : list[list[int]]) -> list[int]:
     flat : list[int] = []
     for row in map:
@@ -117,55 +141,63 @@ def flatten_map_gen(map : list[list[int]]):
 def sort_dict_by_values(input : dict, reverse : bool = True):
     return {k: v for k, v in sorted(input.items(), key=lambda item: item[1], reverse=reverse)}
 
-def eval_genomes(genomes : list[neat.DefaultGenome], config : neat.config.Config):
-    nets : list[neat.nn.FeedForwardNetwork] = []
-    ges : list[neat.DefaultGenome] = []
-    players : list[bd_core.Game] = []
-    for genome_id, genome in genomes:
-        genome.fitness = 0
-        net = neat.nn.FeedForwardNetwork.create(genome, config)
-        nets.append(net)
-        ges.append(genome)
-        players.append(bd_core.Game.from_saved_map(MAP_USED, copy_map=True))
-    
-    #for turn in range(40):
-    #finished_players : set[int] = set()
-    for index, player in enumerate(players):
-        box_experiment_bonus : float = 0.0
-        box_experiment_count : int = 0
-        box_carry_bonus : float = 0.0
-        box_carry_count : int = 0
-        for turn in range(40):
-            start_dist : float = player.get_dist()
-            #if index in finished_players: continue
-            player_net = nets[index]
-            player_genome = ges[index]
-            verifications, actions = player.get_binds()
-            output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
-                                                        player.player_direction, player.player_holding_block])
-            output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
-            sorted_output : dict[int, float] = sort_dict_by_values(output_dict, reverse=True)
-            chosen_action : int
-            for action_type in sorted_output:
-                if not verifications[action_type](): continue
-                actions[action_type]()
-                chosen_action = action_type
-                break
-            end_dist : float = player.get_dist()
-            if chosen_action in {bd_core.ActionType.LEFT.value, bd_core.ActionType.RIGHT.value}:
-                if player.player_holding_block:
-                    if (end_dist + 0.5) < start_dist:
-                        box_carry_count += 1
-                        box_carry_bonus += 6 if box_carry_count <= 2 else 0
-            if chosen_action == bd_core.ActionType.DOWN.value:
-                box_experiment_bonus += (3.0 - box_experiment_count) if (3.0 - box_experiment_count) > 0 else 0
-                box_experiment_count += 1
-            player_genome.fitness = get_fitness(player, turn) + box_experiment_bonus# + box_carry_bonus
-            if player.game_won():
-                player_genome.fitness += 20
-                #finished_players.add(index)
-        #if len(finished_players) >= len(players):
-            #break
+def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
+    door_x, door_y = game.door_coords
+    dist : float = game.get_adjusted_dist()
+    score : float = 80.0 - 5 * dist
+    if door_x == game.player_x and door_y == game.player_y:
+        game_win_score_bonus : float = 400.0 - turn_count
+        if game_win_score_bonus < 350.0: game_win_score_bonus = 350.0
+        score += game_win_score_bonus
+    if game.player_holding_block:
+        score += 15.0
+        if game.down_legal():
+            score += 20.0
+        else:
+            score -= 30.0
+    return score
+
+def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Config, used_map : bd_core.SavedMap|None = None):
+    genome = genome_arg[1]
+    genome.fitness = 0
+    if used_map is None: used_map = MAP_USED
+    player = bd_core.Game.from_saved_map(MAP_USED, copy_map=True)
+    player_net = neat.nn.FeedForwardNetwork.create(genome, config)
+    box_carry_start_dist : float|None = None
+    box_carry_bonus : float = 0.0
+    verifications, actions = player.get_binds()
+    for turn in range(40):
+        start_dist : float = player.get_dist()        
+        output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
+                                                    player.player_direction, player.player_holding_block])
+        output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
+        sorted_output : dict[int, float] = sort_dict_by_values(output_dict, reverse=True)
+        chosen_action : int
+        for action_type in sorted_output:
+            if not verifications[action_type](): continue
+            actions[action_type]()
+            chosen_action = action_type
+            break
+        end_dist : float = player.get_dist()
+        if (end_dist + 0.5) < start_dist:
+            genome.fitness += 1
+        if chosen_action == bd_core.ActionType.DOWN.value:
+            if not player.player_holding_block:
+                box_carry_end_dist = player.get_facing_dist()
+                progress : float = box_carry_start_dist - box_carry_end_dist
+                box_carry_bonus += 6 * progress
+                box_carry_start_dist = None
+            else:
+                box_carry_start_dist = player.get_facing_dist()
+        genome.fitness = get_fitness(player, turn) + box_carry_bonus
+        if player.game_won():
+            genome.fitness += 20
+            return
+
+def eval_genomes(genomes : list[int, tuple[int, neat.DefaultGenome]], config : neat.config.Config, used_map : bd_core.SavedMap|None = None):
+    if used_map is None: used_map = MAP_USED
+    for genome in genomes:
+        eval_genome(genome, config, used_map)
                 
         
 def modify_config(config_path : str, used_map : bd_core.SavedMap|None = None):

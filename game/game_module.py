@@ -3,6 +3,11 @@ from typing import Any
 from math import floor
 from random import shuffle, choice
 import random
+import os
+import neat
+import neat.config
+import non_pygame.ml_core as ml_core
+import non_pygame.block_dude_core as bd_core
 import utils.tween_module as TweenModule
 from utils.ui.ui_sprite import UiSprite
 from utils.ui.textbox import TextBox
@@ -41,6 +46,16 @@ class Game:
             self.state = self.STATES.TestGameState(self)
         elif mode == 'MapEditor':
             self.state = self.STATES.MapEditorGameState(self)
+        elif mode == 'Sim':
+
+            config_path : str = "non_pygame/config-feedforward.txt"
+            ml_core.modify_config(config_path)
+            config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+            pop : neat.Population = neat.Population(config)
+            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=100)
+            map_used = bd_core.load_map('map3')
+            self.state = self.STATES.SimulationGameState(self, ipop, config, map_used)
+            pass
         
 
         
@@ -85,7 +100,7 @@ class Game:
         return not isinstance(self.state, self.STATES.PausedGameState)
     
     
-    def fire_gameover_event(self, goto_result_screen : bool = True):
+    def fire_gameover_event(self):
         new_event = pygame.event.Event(core_object.END_GAME, {})
         pygame.event.post(new_event)
     

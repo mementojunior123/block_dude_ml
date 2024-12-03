@@ -79,8 +79,9 @@ class Tile(Sprite):
     
     def clean_instance(self):
         self.image = None
-        self.color_images = None
-        self.color_image_list = None
+        self.tile_type = None
+        self.current_map = None
+        self.grid_pos = None
         self.rect = None
         self._position = pygame.Vector2(0,0)
         self.zindex = None
@@ -196,6 +197,7 @@ class TileMap(Sprite):
             for x, game_cell in enumerate(row):
                 if game_cell != self.tiles[y][x].tile_type.value:
                     self.tiles[y][x].change_type(CellType(game_cell))
+                    self.tiles[y][x].align_with_map()
         self.tiles[player_coords[1]][player_coords[0]].change_type(CellType.PLAYER)
         if player.player_holding_block:
             self.tiles[player_coords[1] - 1][player_coords[0]].change_type(CellType.BLOCK)
@@ -203,6 +205,10 @@ class TileMap(Sprite):
     def clean_instance(self):
         self.image = None
         self.rect = None
+        self.tiles = None
+        self.scale = None
+        self.map_size = None
+        self.map_rect = None
         self._position = pygame.Vector2(0,0)
         self.zindex = None
 
