@@ -47,17 +47,51 @@ class Game:
         elif mode == 'MapEditor':
             self.state = self.STATES.MapEditorGameState(self)
         elif mode == 'Sim':
-
+            MAP_NAME : str = 'map4'
             config_path : str = "non_pygame/config-feedforward.txt"
-            ml_core.modify_config(config_path)
+            map_used = bd_core.load_map(MAP_NAME)
+            ml_core.modify_config(config_path, map_used)
             config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
             pop : neat.Population = neat.Population(config)
-            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=500)
-            map_used = bd_core.load_map('map4')
+            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=1000)
             self.state = self.STATES.SimulationGameState(self, ipop, config, map_used)
             pass
+        elif mode == 'Replay':
+            replay : ml_core.GenomeReplay|None = ml_core.load_replay('non_pygame/winners/winner1')
+            if replay is None:
+                self.alert_player('Replay was not found!')
+                self.start_game('Sim')
+                return
+            self.state = self.STATES.ShowcaseGameState(self, replay)
+        elif mode == 'Replay_F':
+            replay : ml_core.GenomeReplay|None = ml_core.load_replay('non_pygame/winners/failure')
+            if replay is None:
+                self.alert_player('Replay was not found!')
+                self.start_game('Sim')
+                return
+            self.state = self.STATES.ShowcaseGameState(self, replay)
         
+    def alert_player(self, text : str, alert_speed : float = 1):
+        text_sprite = TextSprite(pygame.Vector2(core_object.main_display.get_width() // 2, 90), 'midtop', 0, text, 
+                        text_settings=(core_object.menu.font_60, 'White', False), text_stroke_settings=('Black', 2), colorkey=(0,255,0))
+        
+        text_sprite.rect.bottom = -5
+        text_sprite.position = pygame.Vector2(text_sprite.rect.center)
+        temp_y = text_sprite.rect.centery
+        core_object.main_ui.add_temp(text_sprite, 5)
+        TInfo = TweenModule.TweenInfo
+        goal1 = {'rect.centery' : 50, 'position.y' : 50}
+        info1 = TInfo(interpolation.quad_ease_out, 0.3 / alert_speed)
+        goal2 = {'rect.centery' : temp_y, 'position.y' : temp_y}
+        info2 = TInfo(interpolation.quad_ease_in, 0.4 / alert_speed)
+        
+        on_screen_time = 1 / alert_speed
+        info_wait = TInfo(lambda t : t, on_screen_time)
+        goal_wait = {}
 
+        chain = TweenModule.TweenChain(text_sprite, [(info1, goal1), (info_wait, goal_wait), (info2, goal2)], True)
+        chain.register()
+        chain.play()
         
         #Setup varaibles
 
@@ -117,6 +151,7 @@ class Game:
 
         #Cleanup ingame object
         Sprite.kill_all_sprites()
+        core_object.main_ui.clear_all()
 
         #Clear game varaibles
          

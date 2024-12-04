@@ -87,7 +87,7 @@ class Tile(Sprite):
         self.zindex = None
 
 Sprite.register_class(Tile)
-for _ in range(200):
+for _ in range(500):
     Tile()
 
 class TileMap(Sprite):
@@ -165,10 +165,11 @@ class TileMap(Sprite):
         return new_surf
     
     def update(self, delta: float):
-        if not isinstance(core_object.game.state, core_object.game.STATES.MapEditorGameState): return
+        if not isinstance(core_object.game.state, (core_object.game.STATES.MapEditorGameState, 
+                          core_object.game.STATES.ShowcaseGameState)): return
         keyboard_map = pygame.key.get_pressed()
         move_vector : pygame.Vector2 = pygame.Vector2(0,0)
-        speed : int = 5
+        speed : int = 8
         if keyboard_map[pygame.K_a]:
             move_vector += pygame.Vector2(-1, 0)
         if keyboard_map[pygame.K_d]:

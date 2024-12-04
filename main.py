@@ -57,9 +57,9 @@ font_40 = pygame.font.Font('assets/fonts/Pixeltype.ttf', 40)
 
 def start_game(event : pygame.Event):
     if event.type != core.START_GAME: return
-    
+    mode : str = event.mode
     core.menu.prepare_exit()
-    core.game.start_game()
+    core.game.start_game(mode)
 
     core_object.event_manager.bind(pygame.MOUSEBUTTONDOWN, Sprite.handle_mouse_event)
     core_object.event_manager.bind(pygame.FINGERDOWN, Sprite.handle_touch_event)

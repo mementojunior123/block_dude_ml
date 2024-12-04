@@ -237,6 +237,12 @@ class Game:
             if y > 9999: raise InvalidMapError('No floor detected!')
         self.map[y][x] = CellType.BLOCK
     
+    def get_drop_loaction(self, x : int, y : int) -> tuple[int, int]:
+        while self.map[y + 1][x] == CellType.EMPTY:
+            y += 1
+            if y > 9999: raise InvalidMapError('No floor detected!')
+        return (x, y)
+    
     def render_terminal(self, scale : int = 1):
         ressources : str = ' -OD'
         player_ressource : str = '>' if self.player_direction == 1 else '<'

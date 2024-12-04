@@ -99,7 +99,7 @@ class MapEditorGameState(NormalGameState):
     def __init__(self, game_object : 'Game'):
         self.game = game_object
         empty_canvas : SavedMap = {
-            'map' : [[0 for _ in range(12)] for _ in range(12)],
+            'map' : [[0 for _ in range(20)] for _ in range(12)],
             'start_direction' : 1,
             'start_x' : 1,
             'start_y' : 8
@@ -171,7 +171,7 @@ class SimulationGameState(NormalGameState):
         self.simulating_sprite  : TextSprite = TextSprite(pygame.Vector2(480, 270), 'center', 0, f'Simulating{self.current_amount_of_dots * '.'}', 
                                        text_settings=(self.game.font_60, 'White', False), 
                                  text_stroke_settings=('Black', 2), colorkey=(0, 255, 0))
-        self.escape_sprite : TextSprite = TextSprite(pygame.Vector2(25, 25), 'topleft', 0, 'Press ESC to exit', 
+        self.escape_sprite : TextSprite = TextSprite(pygame.Vector2(955, 5), 'topright', 0, 'Press ESC to exit', 
                                    text_settings=(self.game.font_60, 'White', False), text_stroke_settings=('Black', 2), colorkey=(0, 255, 0))
         
         self.progress_sprite : TextSprite = TextSprite(pygame.Vector2(25, 515), 'bottomleft', 0, f'0/{sim_runner.max_generations}', 
@@ -210,6 +210,14 @@ class SimulationGameState(NormalGameState):
             core_object.main_ui.clear_all()
             print(winner.fitness)
             core_object.game.state = ShowcaseGameState(self.game, replay)
+    
+    def handle_key_event(self, event : pygame.Event):
+        super().handle_key_event(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_s:
+                genome = self.sim_runner.current_best_genome
+                ml_core.save_replay('non_pygame/winners/failure', 
+                                    {'config' : self.config, 'genome' : genome, 'map_used' : self.map_used, 'net_used' : genome.net_used})
 
     def continue_sim(self, frame_budget : float):
         timer : Timer = Timer(frame_budget, time_source=perf_counter)
@@ -264,8 +272,7 @@ class ShowcaseGameState(NormalGameState):
         if self.action_timer.isover():
             self.action_timer.restart()
             self.take_player_action()
-        self.visual_map.synchronise_with_player(self.player)   
-        self.visual_map.move_to(pygame.Vector2(480, 270))
+        self.visual_map.synchronise_with_player(self.player)
         
 
     
@@ -283,6 +290,8 @@ class ShowcaseGameState(NormalGameState):
         if self.player.game_won():
             print("GG!")
             self.game.state = ShowcaseOverGameState(self.game)
+            replay : ml_core.GenomeReplay = {'config' : self.config, 'genome' : self.genome, 'map_used' : self.map_used, 'net_used' : self.net}
+            ml_core.save_replay('non_pygame/winners/winner1', replay)
         elif self.current_turn >= self.MAX_TURNS:
             print("It ran out of time...")
             self.game.state = ShowcaseOverGameState(self.game)

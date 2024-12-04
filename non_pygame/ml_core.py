@@ -44,8 +44,11 @@ def save_replay(file_path : str, replay : GenomeReplay):
         pickle.dump(replay, file)
 
 def load_replay(file_path : str) -> GenomeReplay|None:
-    with open(file_path, 'rb') as file:
-        replay = pickle.load(file)
+    try:
+        with open(file_path, 'rb') as file:
+            replay = pickle.load(file)
+    except EOFError:
+        return None
     return replay
 
 class PopulationInterface:
@@ -145,7 +148,7 @@ def sort_dict_by_values(input : dict, reverse : bool = True):
 def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
     door_x, door_y = game.door_coords
     dist : float = game.get_adjusted_dist()
-    score : float = 80.0 - 5 * dist
+    score : float = 120.0 - 6.0 * dist
     if door_x == game.player_x and door_y == game.player_y:
         game_win_score_bonus : float = 400.0 - turn_count
         if game_win_score_bonus < 350.0: game_win_score_bonus = 350.0
@@ -187,15 +190,15 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
             if not player.player_holding_block:
                 box_carry_end_dist = player.get_facing_dist()
                 progress : float = box_carry_start_dist - box_carry_end_dist
-                box_carry_bonus += 8 * progress
+                box_carry_bonus += 6 * progress
                 box_carry_start_dist = None
-                if (player.get_facing_player() == bd_core.CellType.BLOCK
-                and player.get_at(player.player_x + player.player_direction, player.player_y + 1) == bd_core.CellType.BLOCK):
+                drop_location : tuple[int, int] = player.get_drop_loaction(player.player_x + player.player_direction, player.player_y - 1)
+                if (player.get_at(*drop_location) == bd_core.CellType.BLOCK.value 
+                and player.get_at(drop_location[0], drop_location[1] + 1) == bd_core.CellType.BLOCK):
                     if progress < 0:
-                        box_carry_bonus -= 20
+                        box_carry_bonus -= 28
                     else:
-                        box_carry_bonus -= 8 * progress
-                        box_carry_bonus -= 20
+                        box_carry_bonus -= 28
             else:
                 box_carry_start_dist = player.get_facing_dist()
         genome.fitness = get_fitness(player, turn) + box_carry_bonus

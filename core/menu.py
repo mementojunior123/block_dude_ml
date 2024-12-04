@@ -195,8 +195,13 @@ class Menu(BaseMenu):
         self.stage_data : list[dict] = [None, {}]
         self.stages = [None, 
         [BaseUiElements.new_text_sprite('Game Title', (Menu.font_60, 'Black', False), 0, 'midtop', (centerx, 50)),
-        BaseUiElements.new_button('BlueButton', 'Play', 1, 'midbottom', (centerx, window_size[1] - 15), (0.5, 1.4), 
-        {'name' : 'play_button'}, (Menu.font_40, 'Black', False))], #stage 1
+        BaseUiElements.new_button('BlueButton', 'Sim', 1, 'midbottom', (centerx - 300, window_size[1] - 15), (0.5, 1.4), 
+        {'name' : 'sim_button'}, (Menu.font_40, 'Black', False)),
+        BaseUiElements.new_button('BlueButton', 'Map Editor', 1, 'midbottom', (centerx + 0, window_size[1] - 15), (0.5, 1.2), 
+        {'name' : 'map_edit_button'}, (Menu.font_40, 'Black', False)),
+        BaseUiElements.new_button('BlueButton', 'Replay', 1, 'midbottom', (centerx + 300, window_size[1] - 15), (0.5, 1.2), 
+        {'name' : 'replay_button'}, (Menu.font_40, 'Black', False)),
+        ]
         ]
         self.bg_color = (94, 129, 162)
     
@@ -215,5 +220,10 @@ class Menu(BaseMenu):
         stage_data = self.stage_data[self.stage]
         match self.stage:
             case 1:
-                if name == "play_button":
-                    pygame.event.post(pygame.Event(core_object.START_GAME, {}))
+                if name == "sim_button":
+                    pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : "Sim"}))
+                elif name == "map_edit_button":
+                    pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : "MapEditor"}))
+                elif name == "replay_button":
+                    mode = "Replay_F" if pygame.key.get_pressed()[pygame.K_f] else "Replay"
+                    pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : mode}))
