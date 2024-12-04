@@ -213,7 +213,7 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
             return
         if any(player == game_state for game_state in state_stream):
             repeat_count += 1
-            if repeat_count >= 10:
+            if repeat_count >= 15:
                 genome.fitness = get_fitness(player, turn) + box_carry_bonus
                 return
     genome.fitness = get_fitness(player, turn) + box_carry_bonus
