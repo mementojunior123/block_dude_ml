@@ -31,7 +31,6 @@ compatibility_weight_coefficient   = 0.5
 # connection add/remove rates
 conn_add_prob           = 0.5
 conn_delete_prob        = 0.5
-
 # connection enable options
 enabled_default         = True
 enabled_mutate_rate     = 0.01

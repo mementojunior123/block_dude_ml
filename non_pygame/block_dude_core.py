@@ -1,4 +1,4 @@
-from typing import TypeAlias, TypedDict, Callable
+from typing import TypeAlias, TypedDict, Callable, Union
 from enum import Enum, IntEnum
 import json
 import os
@@ -74,6 +74,9 @@ def validate_map(map : GameMap, raise_errors : bool = False) -> bool:
 def get_map_size(map : SavedMap) -> tuple[int, int]:
     return (len(map['map'][0]), len(map['map']), )
 
+def get_map_size_l(map : list[list[int]]) -> tuple[int, int]:
+    return (len(map[0]), len(map))
+
 def load_map(map_name : str, strict = False) -> SavedMap|None:
     try:
         with open(f'non_pygame/maps/{map_name}.json', 'r') as file:
@@ -118,6 +121,27 @@ class Game:
         if copy_map: new_game.map = deepcopy(new_game.map)
         return new_game
     
+    def __eq__(self, value : Union[GameState,'Game']):
+        x_size, y_size  = get_map_size_l(self.map)
+        if type(value) == Game:
+            other_x_size, other_y_size = get_map_size_l(value.map)
+            if (other_x_size != x_size) or (other_y_size != y_size): return False
+            if self.player_x != value.player_x or self.player_y != value.player_y: return False
+            if self.player_direction != value.player_direction: return False
+            if self.player_holding_block != value.player_holding_block: return False
+            if not all((value.map[y][x] == self.map[y][x] for x in range(x_size)) for y in range(y_size)): return False
+            return True
+        elif type(value) == dict:
+            other_x_size, other_y_size = get_map_size_l(value['map'])
+            if (other_x_size != x_size) or (other_y_size != y_size): return False
+            if self.player_x != value['player_x'] or self.player_y != value['player_y']: return False
+            if self.player_direction != value['player_direction']: return False
+            if self.player_holding_block != value['player_holding_block']: return False
+            if not all((value['map'][y][x] == self.map[y][x] for x in range(x_size)) for y in range(y_size)): return False
+            return True
+        else:
+            raise TypeError(f'Wrong type (sent a {type(value)})')
+
     @staticmethod
     def from_saved_map(saved_map : SavedMap, copy_map : bool = False) -> 'Game':
         new_game = Game(saved_map['map'], [saved_map['start_x'], saved_map['start_y']], saved_map['start_direction'])
@@ -292,6 +316,8 @@ class Game:
         else:
             y_diff : int = abs(self.player_y - self.door_coords[1])
         return float(abs(self.player_x - self.door_coords[0]) + y_diff)
+    
+    
 
 
 def render_terminal_gamestate(game_state : GameState):

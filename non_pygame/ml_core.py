@@ -1,5 +1,6 @@
 import os
 from typing import Callable, TypedDict
+from collections import deque
 from time import sleep
 import sys
 import pickle
@@ -14,7 +15,7 @@ from neat.population import Population
 import non_pygame.block_dude_core as bd_core
 from non_pygame.non_pygame_utils import stall
 
-MAP_USED : bd_core.SavedMap = bd_core.MAP3
+MAP_USED : bd_core.SavedMap = bd_core.load_map('map4')
 
 class GenomeReplay(TypedDict):
     genome : neat.DefaultGenome
@@ -148,7 +149,7 @@ def sort_dict_by_values(input : dict, reverse : bool = True):
 def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
     door_x, door_y = game.door_coords
     dist : float = game.get_adjusted_dist()
-    score : float = 120.0 - 6.0 * dist
+    score : float = 120.0 - 5.0 * dist
     if door_x == game.player_x and door_y == game.player_y:
         game_win_score_bonus : float = 400.0 - turn_count
         if game_win_score_bonus < 350.0: game_win_score_bonus = 350.0
@@ -164,6 +165,7 @@ def get_fitness(game : bd_core.Game, turn_count : int = 0) -> float:
 def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Config, used_map : bd_core.SavedMap|None = None):
     genome = genome_arg[1]
     genome.fitness = 0
+    repeat_count : int = 0
     if used_map is None: used_map = MAP_USED
     player = bd_core.Game.from_saved_map(used_map, copy_map=True)
     player_net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -171,7 +173,8 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
     box_carry_bonus : float = 0.0
     verifications, actions = player.get_binds()
     genome.net_used = player_net
-    for turn in range(40):
+    state_stream : deque[bd_core.GameState] = deque([player.to_game_state()], maxlen=15)
+    for turn in range(100):
         start_dist : float = player.get_dist()        
         output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
                                                     player.player_direction, player.player_holding_block])
@@ -183,6 +186,8 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
             actions[action_type]()
             chosen_action = action_type
             break
+        if len(state_stream) >= state_stream.maxlen: state_stream.popleft()
+        state_stream.append(player.to_game_state())
         end_dist : float = player.get_dist()
         if (end_dist + 0.5) < start_dist:
             genome.fitness += 1.5
@@ -196,15 +201,22 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
                 if (player.get_at(*drop_location) == bd_core.CellType.BLOCK.value 
                 and player.get_at(drop_location[0], drop_location[1] + 1) == bd_core.CellType.BLOCK):
                     if progress < 0:
-                        box_carry_bonus -= 28
+                        box_carry_bonus -= 4 * progress
+                        box_carry_bonus -= 22
                     else:
-                        box_carry_bonus -= 28
+                        box_carry_bonus -= 22
             else:
                 box_carry_start_dist = player.get_facing_dist()
         genome.fitness = get_fitness(player, turn) + box_carry_bonus
         if player.game_won():
-            genome.fitness += 20
+            genome.fitness = get_fitness(player, turn) + box_carry_bonus + 20
             return
+        if any(player == game_state for game_state in state_stream):
+            repeat_count += 1
+            if repeat_count >= 10:
+                genome.fitness = get_fitness(player, turn) + box_carry_bonus
+                return
+    genome.fitness = get_fitness(player, turn) + box_carry_bonus
 
 def eval_genomes(genomes : list[int, tuple[int, neat.DefaultGenome]], config : neat.config.Config, used_map : bd_core.SavedMap|None = None):
     if used_map is None: used_map = MAP_USED

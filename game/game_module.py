@@ -53,7 +53,7 @@ class Game:
             ml_core.modify_config(config_path, map_used)
             config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
             pop : neat.Population = neat.Population(config)
-            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=1000)
+            ipop : ml_core.PopulationInterface = ml_core.PopulationInterface(pop, gens=200)
             self.state = self.STATES.SimulationGameState(self, ipop, config, map_used)
             pass
         elif mode == 'Replay':
