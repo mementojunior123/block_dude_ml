@@ -99,13 +99,13 @@ class MapEditorGameState(NormalGameState):
     def __init__(self, game_object : 'Game'):
         self.game = game_object
         empty_canvas : SavedMap = {
-            'map' : [[0 for _ in range(20)] for _ in range(12)],
+            'map' : [[0 for _ in range(22)] for _ in range(8)],
             'start_direction' : 1,
             'start_x' : 1,
-            'start_y' : 8
+            'start_y' : 5
             }
-        empty_canvas['map'][9][0] = 1
-        empty_canvas['map'][9][1] = CellType.BLOCK.value
+        empty_canvas['map'][6][0] = 1
+        empty_canvas['map'][7][1] = CellType.BLOCK.value
         self.map = TileMap.spawn((480, 270), empty_canvas, self.MAP_SCALE)
         self.current_action_mode : MapEditorMode = MapEditorMode.SELECT
         self.cursor = UiSprite(pygame.transform.scale(Tile.BLOCK_TEXTURE, (50,50)), pygame.rect.Rect(0,0,50,50), 0, zindex=1)

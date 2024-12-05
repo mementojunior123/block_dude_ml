@@ -4,6 +4,7 @@ from collections import deque
 from time import sleep
 import sys
 import pickle
+import neat.math_util
 from six import itervalues, iteritems
 from neat.population import CompleteExtinctionException
 sys.path.append(".")
@@ -51,6 +52,21 @@ def load_replay(file_path : str) -> GenomeReplay|None:
     except EOFError:
         return None
     return replay
+
+class FixedStdOutReporter(neat.StdOutReporter):
+    def post_evaluate(self, config, population, species, best_genome):
+        # pylint: disable=no-self-use
+        fitnesses = [c.fitness for c in itervalues(population)]
+        fit_mean = neat.math_util.mean(fitnesses)
+        fit_std = neat.math_util.stdev(fitnesses)
+        #best_species_id = species.get_species_id(best_genome.key)
+        print('Population\'s average fitness: {0:3.5f} stdev: {1:3.5f}'.format(fit_mean, fit_std))
+        print(
+            'Best fitness: {0:3.5f} - size: {1!r} - species {2} - id {3}'.format(best_genome.fitness,
+                                                                                 best_genome.size(),
+                                                                                 0,
+                                                                                 best_genome.key))
+
 
 class PopulationInterface:
     def __init__(self, population : neat.Population, gens : int|None = 50):
@@ -189,8 +205,6 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
         if len(state_stream) >= state_stream.maxlen: state_stream.popleft()
         state_stream.append(player.to_game_state())
         end_dist : float = player.get_dist()
-        if (end_dist + 0.5) < start_dist:
-            genome.fitness += 1.5
         if chosen_action == bd_core.ActionType.DOWN.value:
             if not player.player_holding_block:
                 box_carry_end_dist = player.get_facing_dist()
@@ -200,7 +214,7 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
                 drop_location : tuple[int, int] = player.get_drop_loaction(player.player_x + player.player_direction, player.player_y - 1)
                 if (player.get_at(*drop_location) == bd_core.CellType.BLOCK.value 
                 and player.get_at(drop_location[0], drop_location[1] + 1) == bd_core.CellType.BLOCK):
-                    if progress < 0:
+                    if progress > 0:
                         box_carry_bonus -= 4 * progress
                         box_carry_bonus -= 22
                     else:
