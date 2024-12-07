@@ -1,8 +1,10 @@
 import pygame
 from math import copysign
-from typing import Callable, Any, Union
+from typing import Callable, Any, Union, TypeAlias
 from random import random
 from collections import OrderedDict
+
+AnyJson : TypeAlias = Union[int, float, str, None, bool, list["AnyJson"], dict[str, "AnyJson"]]
 
 def to_roman(num : int) -> str:
 

@@ -2,6 +2,6 @@
 Optimize the network parameters so it finds solutions faster
 Improve the scoring function
 -----Mid Priority------
-Add pygame visuals for the simulations
+Add pygame visuals for the simulations (Mostly done)
 -----Low Priority------
 General optimizations

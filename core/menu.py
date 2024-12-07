@@ -194,14 +194,16 @@ class Menu(BaseMenu):
         
         self.stage_data : list[dict] = [None, {}]
         self.stages = [None, 
-        [BaseUiElements.new_text_sprite('Game Title', (Menu.font_60, 'Black', False), 0, 'midtop', (centerx, 50)),
+        [BaseUiElements.new_text_sprite('Block Dude', (Menu.font_60, 'Black', False), 0, 'midtop', (centerx, 50)),
         BaseUiElements.new_button('BlueButton', 'Sim', 1, 'midbottom', (centerx - 300, window_size[1] - 15), (0.5, 1.4), 
         {'name' : 'sim_button'}, (Menu.font_40, 'Black', False)),
         BaseUiElements.new_button('BlueButton', 'Map Editor', 1, 'midbottom', (centerx + 0, window_size[1] - 15), (0.5, 1.2), 
         {'name' : 'map_edit_button'}, (Menu.font_40, 'Black', False)),
         BaseUiElements.new_button('BlueButton', 'Replay', 1, 'midbottom', (centerx + 300, window_size[1] - 15), (0.5, 1.2), 
-        {'name' : 'replay_button'}, (Menu.font_40, 'Black', False)),
-        ]
+        {'name' : 'replay_button'}, (Menu.font_40, 'Black', False))],
+        [BaseUiElements.new_text_sprite('Map Select', (Menu.font_60, 'Black', False), 0, 'midtop', (centerx, 50)),
+        BaseUiElements.new_textless_button("Left", 1, "midleft", (100, window_size[1] - 15), 1, name='left_button'),
+        BaseUiElements.new_textless_button("Right", 2, "midright", (window_size[0] - 100, window_size[1] - 15), 1, name='right_button')]
         ]
         self.bg_color = (94, 129, 162)
     
@@ -210,6 +212,19 @@ class Menu(BaseMenu):
         match self.stage:
             case 1:
                 pass
+    
+    def enter_stage2(self):
+        self.make_stage2_sprites(0)
+
+    def make_stage2_sprites(self, page_index : int):
+        pass
+
+    def clear_stage2_sprites(self):
+        pass
+
+    def exit_stage2(self):
+        self.clear_stage2_sprites()
+        self.stage_data[2].clear()
     
     def handle_tag_event(self, event : pygame.Event):
         if event.type != UiSprite.TAG_EVENT:
@@ -227,3 +242,4 @@ class Menu(BaseMenu):
                 elif name == "replay_button":
                     mode = "Replay_F" if pygame.key.get_pressed()[pygame.K_f] else "Replay"
                     pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : mode}))
+    

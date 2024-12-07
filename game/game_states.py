@@ -272,7 +272,7 @@ class ShowcaseGameState(NormalGameState):
         if self.action_timer.isover():
             self.action_timer.restart()
             self.take_player_action()
-        self.visual_map.synchronise_with_player(self.player)
+            self.visual_map.synchronise_with_player(self.player)
         
 
     
@@ -288,17 +288,63 @@ class ShowcaseGameState(NormalGameState):
             break
         self.current_turn += 1
         if self.player.game_won():
-            print("GG!")
+            self.game.alert_player("GG!")
             self.game.state = ShowcaseOverGameState(self.game)
             replay : ml_core.GenomeReplay = {'config' : self.config, 'genome' : self.genome, 'map_used' : self.map_used, 'net_used' : self.net}
             ml_core.save_replay('non_pygame/winners/winner1', replay)
         elif self.current_turn >= self.MAX_TURNS:
-            print("It ran out of time...")
+            self.game.alert_player("It ran out of time...")
             self.game.state = ShowcaseOverGameState(self.game)
             #ml_core.show_genome_playing(self.genome, self.config, 5, 40, 'It ran out of time...', self.map_used)
 
 class ShowcaseOverGameState(NormalGameState):
     def __init__(self, game_object):
+        super().__init__(game_object)
+        self.wait_timer : Timer = Timer(3, time_source=core_object.game.game_timer.get_time)
+    
+    def main_logic(self, delta : float):
+        super().main_logic(delta)
+        if self.wait_timer.isover():
+            self.game.fire_gameover_event()
+
+class PlayingGameState(NormalGameState):
+    def __init__(self, game_object : "Game", map_used : 'SavedMap'):
+        super().__init__(game_object)
+        self.player = bd_core.Game.from_saved_map(map_used, copy_map=True)
+        self.visual_map : TileMap = TileMap.spawn((480, 270), map_used, 75)
+        self.visual_map.synchronise_with_player(self.player)
+    
+    def main_logic(self, delta : float):
+        super().main_logic(delta)
+    
+    def handle_key_event(self, event : pygame.Event):
+        super().handle_key_event(event)
+        if event.type == pygame.KEYDOWN:
+            self.on_key_press(event.key)
+
+    def on_key_press(self, key : int):
+        match key:
+            case pygame.K_UP:
+                self.try_action(bd_core.ActionType.UP)
+            case pygame.K_DOWN:
+                self.try_action(bd_core.ActionType.DOWN)
+            case pygame.K_LEFT:
+                self.try_action(bd_core.ActionType.LEFT)
+            case pygame.K_RIGHT:
+                self.try_action(bd_core.ActionType.RIGHT)
+    
+    def try_action(self, action : bd_core.ActionType) -> bool:
+        verifications, actions = self.player.get_binds()
+        if not verifications[action.value](): return False
+        actions[action.value]()
+        self.visual_map.synchronise_with_player(self.player)
+        if self.player.game_won():
+            self.game.alert_player("You win!")
+            self.game.state = PlayingVictoryGameState(self.game)
+        return True
+
+class PlayingVictoryGameState(NormalGameState):
+    def __init__(self, game_object : 'Game'):
         super().__init__(game_object)
         self.wait_timer : Timer = Timer(3, time_source=core_object.game.game_timer.get_time)
     
@@ -349,3 +395,4 @@ class GameStates:
     SimulationGameState = SimulationGameState
     ShowcaseGameState = ShowcaseGameState
     ShowcaseOverGameState = ShowcaseOverGameState
+    PlayingGameState = PlayingGameState

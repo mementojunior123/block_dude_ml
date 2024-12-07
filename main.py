@@ -44,7 +44,10 @@ core.settings.set_defualt({'Brightness' : 0})
 core.settings.load()
 
 core.set_brightness(core.settings.info['Brightness'])
-
+if core.is_web():
+    core.storage.load_from_web()
+else:
+    core.storage.load_from_file()
 core.menu.init()
 core.game.init()
 import game.game_states as game_state_module

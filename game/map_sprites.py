@@ -165,8 +165,10 @@ class TileMap(Sprite):
         return new_surf
     
     def update(self, delta: float):
-        if not isinstance(core_object.game.state, (core_object.game.STATES.MapEditorGameState, 
-                          core_object.game.STATES.ShowcaseGameState)): return
+        if not isinstance(core_object.game.state, 
+                          (core_object.game.STATES.MapEditorGameState, 
+                          core_object.game.STATES.ShowcaseGameState,
+                          core_object.game.STATES.PlayingGameState)): return
         keyboard_map = pygame.key.get_pressed()
         move_vector : pygame.Vector2 = pygame.Vector2(0,0)
         speed : int = 8
