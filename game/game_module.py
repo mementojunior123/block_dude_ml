@@ -36,11 +36,12 @@ class Game:
 
         
 
-    def start_game(self, mode : str = 'Sim'):
+    def start_game(self, event : pygame.Event):
         self.active = True
         self.game_timer = Timer(-1)
         self.game_data = {}
         self.make_connections()
+        mode : str = event.mode
 
         if mode == 'test':
             self.state = self.STATES.TestGameState(self)
@@ -70,6 +71,10 @@ class Game:
                 self.start_game('Sim')
                 return
             self.state = self.STATES.ShowcaseGameState(self, replay)
+        
+        elif mode == 'Player':
+            map_name : str = event.map_name
+            self.state = self.STATES.PlayingGameState(self, bd_core.load_map(map_name))
         
     def alert_player(self, text : str, alert_speed : float = 1):
         text_sprite = TextSprite(pygame.Vector2(core_object.main_display.get_width() // 2, 90), 'midtop', 0, text, 

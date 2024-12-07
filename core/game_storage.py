@@ -1,5 +1,6 @@
 from sys import platform as PLATFORM
 import json
+import os
 from typing import Any, TypedDict
 from utils.helpers import AnyJson
 
@@ -11,6 +12,11 @@ class GameData(TypedDict):
     pass
 
 class GameStorage:
+    @staticmethod
+    def get_maplist() -> list[str]:
+        for root, dirs, files in os.walk('non_pygame/maps'):
+            return [file_name.removesuffix('.json') for file_name in files if file_name.endswith('.json')]
+    
     '''Most of these functions are incomplete and need implementing.\nThis module is made to handle file I/O and saving on multiple platforms.'''
     def __init__(self) -> None:
         pass

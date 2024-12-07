@@ -206,9 +206,9 @@ class SimulationGameState(NormalGameState):
         if self.sim_runner.isover():
             winner = self.sim_runner.end_run()
             replay : ml_core.GenomeReplay = {'config' : self.config, 'genome' : winner, 'map_used' : self.map_used, 'net_used' : winner.net_used}
-            Sprite.pool_all_sprites()
+            Sprite.kill_all_sprites()
             core_object.main_ui.clear_all()
-            print(winner.fitness)
+            self.game.alert_player(f'{winner.fitness}')
             core_object.game.state = ShowcaseGameState(self.game, replay)
     
     def handle_key_event(self, event : pygame.Event):
@@ -308,35 +308,85 @@ class ShowcaseOverGameState(NormalGameState):
             self.game.fire_gameover_event()
 
 class PlayingGameState(NormalGameState):
+    CAMERA_CENTER : pygame.Vector2 = pygame.Vector2(480, 400)
     def __init__(self, game_object : "Game", map_used : 'SavedMap'):
         super().__init__(game_object)
         self.player = bd_core.Game.from_saved_map(map_used, copy_map=True)
         self.visual_map : TileMap = TileMap.spawn((480, 270), map_used, 75)
         self.visual_map.synchronise_with_player(self.player)
+        self.center_player(self.CAMERA_CENTER)
+        self.DAS_timer : Timer = Timer(0.15, self.game.game_timer.get_time)
     
     def main_logic(self, delta : float):
         super().main_logic(delta)
+        self.do_input()
+        if not self.cam_moving(): self.follow_cam(self.CAMERA_CENTER, delta)
+        for row in self.visual_map.tiles:
+            for tile in row:
+                tile.align_with_map()
     
     def handle_key_event(self, event : pygame.Event):
         super().handle_key_event(event)
         if event.type == pygame.KEYDOWN:
             self.on_key_press(event.key)
+    
+    def cam_moving(self) -> bool:
+        pressed = pygame.key.get_pressed()
+        KEYS = [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d]
+        for key in KEYS:
+            if pressed[key]:
+                return True
+        return False
+    
+    def follow_cam(self, target : pygame.Vector2, delta : float):
+        cam_speed : float = 10 * delta
+        visual_player_loaction : pygame.Vector2 = self.visual_map.tiles[self.player.player_y][self.player.player_x].position
+        offset : pygame.Vector2 = target - visual_player_loaction
+        if offset.magnitude() <= 0: return
+        if offset.magnitude() < cam_speed:
+            self.center_player(target)
+            return
+        offset.scale_to_length(cam_speed)
+        self.visual_map.move_by(-(offset))
+    
+    def center_player(self, target : pygame.Vector2):
+        visual_player_loaction : pygame.Vector2 = self.visual_map.tiles[self.player.player_y][self.player.player_x].position
+        offset : pygame.Vector2 = target - visual_player_loaction
+        self.visual_map.move_by(-offset)
+    
+    def do_input(self):
+        if not self.DAS_timer.isover(): return
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_LEFT] and pressed[pygame.K_RIGHT]: return
+        if pressed[pygame.K_LEFT]:
+            self.on_key_press(pygame.K_LEFT)
+        elif pressed[pygame.K_RIGHT]:
+            self.on_key_press(pygame.K_RIGHT)
+        elif pressed[pygame.K_UP]:
+            self.on_key_press(pygame.K_UP)
 
     def on_key_press(self, key : int):
         match key:
             case pygame.K_UP:
                 self.try_action(bd_core.ActionType.UP)
-            case pygame.K_DOWN:
+            case pygame.K_DOWN|pygame.K_SPACE:
                 self.try_action(bd_core.ActionType.DOWN)
             case pygame.K_LEFT:
-                self.try_action(bd_core.ActionType.LEFT)
+                result = self.try_action(bd_core.ActionType.LEFT)
+                if not result:
+                    self.try_action(bd_core.ActionType.UP)
             case pygame.K_RIGHT:
-                self.try_action(bd_core.ActionType.RIGHT)
+                result = self.try_action(bd_core.ActionType.RIGHT)
+                if not result:
+                    self.try_action(bd_core.ActionType.UP)
     
     def try_action(self, action : bd_core.ActionType) -> bool:
         verifications, actions = self.player.get_binds()
         if not verifications[action.value](): return False
         actions[action.value]()
+        #self.center_player(self.CAMERA_CENTER)
+        if action != bd_core.ActionType.DOWN:
+            self.DAS_timer.restart()
         self.visual_map.synchronise_with_player(self.player)
         if self.player.game_won():
             self.game.alert_player("You win!")
@@ -396,3 +446,4 @@ class GameStates:
     ShowcaseGameState = ShowcaseGameState
     ShowcaseOverGameState = ShowcaseOverGameState
     PlayingGameState = PlayingGameState
+    PlayingVictoryGameState = PlayingVictoryGameState

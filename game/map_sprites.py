@@ -117,8 +117,8 @@ class TileMap(Sprite):
         element.scale = map_scale
         element.player_direction = starting_map['start_direction']
         element.map_size = get_map_size(starting_map)
-        element.map_rect = pygame.rect.FRect(0, 0, (map_scale + element.OUTLINE_WIDTH) * element.map_size[0], (map_scale + element.OUTLINE_WIDTH) * element.map_size[1])
-        element.map_rect.center = center
+        element.map_rect = pygame.rect.Rect(0, 0, (map_scale + element.OUTLINE_WIDTH) * element.map_size[0], (map_scale + element.OUTLINE_WIDTH) * element.map_size[1])
+        element.map_rect.center = tuple(round(el) for el in center)
         element.tiles = []
         for y_level, row in enumerate(starting_map['map']):
             new_row = [Tile.spawn([x, y_level], element, CellType(cell)) for x, cell in enumerate(row)]

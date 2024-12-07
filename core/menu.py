@@ -192,18 +192,20 @@ class Menu(BaseMenu):
 
         self.stage = 1
         
-        self.stage_data : list[dict] = [None, {}]
+        self.stage_data : list[dict] = [None, {}, {}]
         self.stages = [None, 
         [BaseUiElements.new_text_sprite('Block Dude', (Menu.font_60, 'Black', False), 0, 'midtop', (centerx, 50)),
-        BaseUiElements.new_button('BlueButton', 'Sim', 1, 'midbottom', (centerx - 300, window_size[1] - 15), (0.5, 1.4), 
+         BaseUiElements.new_button('BlueButton', 'Play', 1, 'midbottom', (centerx - 375, window_size[1] - 15), (0.5, 1.4), 
+        {'name' : 'play_button'}, (Menu.font_40, 'Black', False)),
+        BaseUiElements.new_button('BlueButton', 'Sim', 1, 'midbottom', (centerx - 125, window_size[1] - 15), (0.5, 1.4), 
         {'name' : 'sim_button'}, (Menu.font_40, 'Black', False)),
-        BaseUiElements.new_button('BlueButton', 'Map Editor', 1, 'midbottom', (centerx + 0, window_size[1] - 15), (0.5, 1.2), 
+        BaseUiElements.new_button('BlueButton', 'Map Editor', 1, 'midbottom', (centerx + 125, window_size[1] - 15), (0.5, 1.2), 
         {'name' : 'map_edit_button'}, (Menu.font_40, 'Black', False)),
-        BaseUiElements.new_button('BlueButton', 'Replay', 1, 'midbottom', (centerx + 300, window_size[1] - 15), (0.5, 1.2), 
+        BaseUiElements.new_button('BlueButton', 'Replay', 1, 'midbottom', (centerx + 375, window_size[1] - 15), (0.5, 1.2), 
         {'name' : 'replay_button'}, (Menu.font_40, 'Black', False))],
         [BaseUiElements.new_text_sprite('Map Select', (Menu.font_60, 'Black', False), 0, 'midtop', (centerx, 50)),
-        BaseUiElements.new_textless_button("Left", 1, "midleft", (100, window_size[1] - 15), 1, name='left_button'),
-        BaseUiElements.new_textless_button("Right", 2, "midright", (window_size[0] - 100, window_size[1] - 15), 1, name='right_button')]
+        BaseUiElements.new_textless_button("Left", 1, "midbottom", (350, window_size[1] - 15), 0.5, name='left_button'),
+        BaseUiElements.new_textless_button("Right", 2, "midbottom", (window_size[0] - 350, window_size[1] - 15), 0.5, name='right_button')]
         ]
         self.bg_color = (94, 129, 162)
     
@@ -213,14 +215,57 @@ class Menu(BaseMenu):
             case 1:
                 pass
     
-    def enter_stage2(self):
-        self.make_stage2_sprites(0)
+    def get_maplist(self) -> list[str]:
+        return core_object.storage.get_maplist()
 
-    def make_stage2_sprites(self, page_index : int):
-        pass
+    def enter_stage2(self):
+        self.stage = 2
+        stage_data = self.stage_data[self.stage]
+        stage_data['maplist'] = self.get_maplist()
+        stage_data['max_page_count'] = 1 + ((len(stage_data['maplist']) - 1) // 6)
+        stage_data['page_index'] = 0
+        self.add_stage2_sprites(stage_data['page_index'])
+    
+    def add_stage2_sprites(self, page_index : int = 0):
+        stage_data = self.stage_data[self.stage]
+        stage_data['extra_sprites'] = self.make_stage2_sprites(page_index)
+        for sprite in stage_data['extra_sprites']:
+            self.stages[2].append(sprite)
+
+    def make_stage2_sprites(self, page_index : int) -> list[UiSprite]:
+        stage_data = self.stage_data[self.stage]
+        start_index : int = page_index * 6
+        end_index : int = page_index * 6 + 6
+        maplist : list[str] = stage_data['maplist']
+        map_count : int = len(maplist)
+        maps_used : list[str]
+        if (end_index) < map_count:
+            maps_used = maplist[start_index:end_index]
+        else:
+            maps_used = maplist[start_index:]
+        return_value : list[UiSprite] = []
+        current_x : int = 200
+        current_y : int = 100
+        for map_name in maps_used:
+            new_button = BaseUiElements.new_button('BlueButton', 'Play', 1, 'midbottom', (current_x, current_y), (0.4, 1.1), 
+                                                   text_settings=(Menu.font_40, 'Black', False), name=f'play_button_{map_name}')
+            new_text_sprite = BaseUiElements.new_text_sprite(f'{map_name}', (Menu.font_50, 'Black', False), 0, 'midbottom', 
+                                                             (current_x, current_y-60), name=f'title_{map_name}')
+            return_value.append(new_button)
+            return_value.append(new_text_sprite)
+            if current_x > 200:
+                current_y += 150
+                current_x = 200
+            else:
+                current_x = 760
+        return return_value
 
     def clear_stage2_sprites(self):
-        pass
+        stage_data = self.stage_data[2]
+        for sprite in stage_data['extra_sprites']:
+            if sprite in self.stages[2]:
+                self.stages[2].remove(sprite)
+        del stage_data['extra_sprites']
 
     def exit_stage2(self):
         self.clear_stage2_sprites()
@@ -235,11 +280,19 @@ class Menu(BaseMenu):
         stage_data = self.stage_data[self.stage]
         match self.stage:
             case 1:
-                if name == "sim_button":
+                if name == 'play_button':
+                    self.enter_stage2()
+                elif name == "sim_button":
                     pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : "Sim"}))
                 elif name == "map_edit_button":
                     pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : "MapEditor"}))
                 elif name == "replay_button":
                     mode = "Replay_F" if pygame.key.get_pressed()[pygame.K_f] else "Replay"
                     pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : mode}))
+            case 2:
+                if name.startswith('play_button_'):
+                    map_name = name.removeprefix('play_button_')
+                    self.exit_stage2()
+                    pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : 'Player', 'map_name' : map_name}))
+                    import game.game_states as game_states
     

@@ -54,6 +54,7 @@ def load_replay(file_path : str) -> GenomeReplay|None:
     return replay
 
 class FixedStdOutReporter(neat.StdOutReporter):
+    #this code is not mine
     def post_evaluate(self, config, population, species, best_genome):
         # pylint: disable=no-self-use
         fitnesses = [c.fitness for c in itervalues(population)]
@@ -69,6 +70,7 @@ class FixedStdOutReporter(neat.StdOutReporter):
 
 
 class PopulationInterface:
+    #this code isnt mine: this is just a way to intergrate the pop.run function into the game loop
     def __init__(self, population : neat.Population, gens : int|None = 50):
         self.pop = population
         self.current_generation : int = 0

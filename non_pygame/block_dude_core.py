@@ -82,7 +82,7 @@ def load_map(map_name : str, strict = False) -> SavedMap|None:
         with open(f'non_pygame/maps/{map_name}.json', 'r') as file:
             map_data : SavedMap = json.load(file)
     except FileNotFoundError:
-        print('Map does not exist!')
+        print(f'Map {map_name} does not exist!')
     validate_map(map_data['map'], raise_errors=True)
     return map_data
 
