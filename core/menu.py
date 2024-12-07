@@ -216,15 +216,16 @@ class Menu(BaseMenu):
                 pass
     
     def get_maplist(self) -> list[str]:
-        return core_object.storage.get_maplist()
+        return sorted(core_object.storage.get_maplist())
 
     def enter_stage2(self):
         self.stage = 2
         stage_data = self.stage_data[self.stage]
         stage_data['maplist'] = self.get_maplist()
-        stage_data['max_page_count'] = 1 + ((len(stage_data['maplist']) - 1) // 6)
+        stage_data['max_page_index'] = ((len(stage_data['maplist']) - 1) // 6)
         stage_data['page_index'] = 0
         self.add_stage2_sprites(stage_data['page_index'])
+        self.update_stage2_button_visiblity()
     
     def add_stage2_sprites(self, page_index : int = 0):
         stage_data = self.stage_data[self.stage]
@@ -266,6 +267,18 @@ class Menu(BaseMenu):
             if sprite in self.stages[2]:
                 self.stages[2].remove(sprite)
         del stage_data['extra_sprites']
+    
+    def change_page_stage2(self, new_index : int):
+        stage_data = self.stage_data[2]
+        stage_data['page_index'] = new_index
+        self.clear_stage2_sprites()
+        self.add_stage2_sprites(new_index)
+        self.update_stage2_button_visiblity()
+    
+    def update_stage2_button_visiblity(self):
+        curr_index : int = self.stage_data[2]['page_index']
+        self.get_sprite_by_name(2, 'left_button').visible = False if curr_index <= 0 else True
+        self.get_sprite_by_name(2, 'right_button').visible = False if curr_index >= self.stage_data[2]['max_page_index'] else True
 
     def exit_stage2(self):
         self.clear_stage2_sprites()
@@ -295,4 +308,12 @@ class Menu(BaseMenu):
                     self.exit_stage2()
                     pygame.event.post(pygame.Event(core_object.START_GAME, {'mode' : 'Player', 'map_name' : map_name}))
                     import game.game_states as game_states
+                elif name == 'left_button':
+                    current_page : int = stage_data['page_index']
+                    if current_page > 0:
+                        self.change_page_stage2(current_page - 1)
+                elif name == 'right_button':
+                    current_page : int = stage_data['page_index']
+                    if current_page < stage_data['max_page_index']:
+                        self.change_page_stage2(current_page + 1)
     
