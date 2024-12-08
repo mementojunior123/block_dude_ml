@@ -16,7 +16,7 @@ from neat.population import Population
 import non_pygame.block_dude_core as bd_core
 from non_pygame.non_pygame_utils import stall
 
-MAP_USED : bd_core.SavedMap = bd_core.load_map('map4')
+MAP_USED : bd_core.SavedMap = bd_core.load_map('level2')
 
 class GenomeReplay(TypedDict):
     genome : neat.DefaultGenome
@@ -238,11 +238,18 @@ def eval_genomes(genomes : list[int, tuple[int, neat.DefaultGenome]], config : n
     if used_map is None: used_map = MAP_USED
     for genome in genomes:
         eval_genome(genome, config, used_map)
-                
-        
+
+lookup : list[int] = [4 ** i for i in range(38)]
+def compress_map_gen(map : list[list[int]]):
+    for row in map:
+        yield sum(value * lookup[i] for i, value in enumerate(row))
+
+def get_map_input_size(the_map : bd_core.SavedMap):
+    return len(the_map['map']) * len(the_map['map'][0])
+
 def modify_config(config_path : str, used_map : bd_core.SavedMap|None = None):
     if used_map is None: used_map = MAP_USED
-    input_count : int = 4 + (len(used_map['map']) * len(used_map['map'][0]))
+    input_count : int = 4 + get_map_input_size(used_map)
     with open(config_path, 'r') as file:
         og_lines : list[str] = file.readlines()
     
@@ -258,7 +265,7 @@ def run(config_path : str):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
     pop : neat.Population = neat.Population(config)
     
-    pop.add_reporter(neat.StdOutReporter(True))
+    pop.add_reporter(FixedStdOutReporter(True))
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     #pop.add_reporter(neat.Checkpointer(5))
@@ -309,7 +316,7 @@ def show_genome_playing(genome : neat.DefaultGenome, config : neat.config.Config
     won : bool = False
     for turn in range(max_turn):
         verifications, actions = player.get_binds()
-        output : list[float] = net.activate([*flatten_map(player.map), player.player_x, player.player_y, 
+        output : list[float] = net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
                                                     player.player_direction, player.player_holding_block])
         output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
         sorted_output = sort_dict_by_values(output_dict, reverse=True)

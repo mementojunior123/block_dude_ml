@@ -61,7 +61,8 @@ class Game:
             replay : ml_core.GenomeReplay|None = ml_core.load_replay('non_pygame/winners/winner1')
             if replay is None:
                 self.alert_player('Replay was not found!')
-                self.start_game('Sim')
+                event.mode = 'Sim'
+                self.start_game(event)
                 return
             self.state = self.STATES.ShowcaseGameState(self, replay)
         elif mode == 'Replay_F':

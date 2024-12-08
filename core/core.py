@@ -62,6 +62,7 @@ class Core:
     
     def setup_web(self, method : int = 1):
         if not self.is_web(): return
+        #platform.window.canvas.style.imageRendering = "pixelated"
         if method == 1:
             platform.window.onfocus = self.continue_things
             platform.window.onblur = self.stop_things

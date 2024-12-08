@@ -222,13 +222,16 @@ class SimulationGameState(NormalGameState):
     def continue_sim(self, frame_budget : float):
         timer : Timer = Timer(frame_budget, time_source=perf_counter)
         while not timer.isover():
-            self.genome_evaluator.do_genome()
             if self.genome_evaluator.isover():
                 self.sim_runner.end_generation()
                 self.update_progress_sprite()
                 if self.sim_runner.isover(): return
                 self.genome_evaluator = ml_core.GenomeEvaluator(self.sim_runner.get_genome_list(), self.config, self.map_used)
                 self.sim_runner.start_generation()
+            self.genome_evaluator.do_genome()
+            if self.genome_evaluator.isover():
+                pass
+                #break
 
     def update_wait_text(self):
         if self.text_sprite_cycle_timer.isover():
@@ -278,7 +281,7 @@ class ShowcaseGameState(NormalGameState):
     
     def take_player_action(self):
         verifications, actions = self.player.get_binds()
-        output : list[float] = self.net.activate([*ml_core.flatten_map(self.player.map), self.player.player_x, self.player.player_y, 
+        output : list[float] = self.net.activate([*ml_core.flatten_map_gen(self.player.map), self.player.player_x, self.player.player_y, 
                                                     self.player.player_direction, self.player.player_holding_block])
         output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
         sorted_output = ml_core.sort_dict_by_values(output_dict, reverse=True)
