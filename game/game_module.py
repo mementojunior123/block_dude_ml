@@ -95,7 +95,7 @@ class Game:
         info_wait = TInfo(lambda t : t, on_screen_time)
         goal_wait = {}
 
-        chain = TweenModule.TweenChain(text_sprite, [(info1, goal1), (info_wait, goal_wait), (info2, goal2)], True)
+        chain = TweenModule.TweenChain(text_sprite, [(info1, goal1), (info_wait, goal_wait), (info2, goal2)], True, time_source=self.game_timer.get_time)
         chain.register()
         chain.play()
         

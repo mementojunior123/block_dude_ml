@@ -42,9 +42,11 @@ class GameStorage:
             json.dump(data, file)
 
     def load_from_web(self):
-        data = json.loads(self.get_web('GameData'))
-        if data is not None:
-            self._load_data(data)
+        web_data = self.get_web('GameData')
+        if web_data is not None:
+            data = json.loads(web_data)
+            if data is not None:
+                self._load_data(data)
 
     def save_to_web(self):
         data = self._get_data()
