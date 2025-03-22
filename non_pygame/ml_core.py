@@ -185,13 +185,15 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
     genome.fitness = 0
     repeat_count : int = 0
     if used_map is None: used_map = MAP_USED
-    player = bd_core.Game.from_saved_map(used_map, copy_map=True)
+    player : bd_core.Game = bd_core.Game.from_saved_map(used_map, copy_map=True)
     player_net = neat.nn.FeedForwardNetwork.create(genome, config)
     box_carry_start_dist : float|None = None
     box_carry_bonus : float = 0.0
     verifications, actions = player.get_binds()
     genome.net_used = player_net
     state_stream : deque[bd_core.GameState] = deque([player.to_game_state()], maxlen=15)
+    action_stream : deque[int] = deque([], maxlen=14)
+    duped_actions : list[int] = []
     for turn in range(100):
         start_dist : float = player.get_dist()        
         output : list[float] = player_net.activate([*flatten_map_gen(player.map), player.player_x, player.player_y, 
@@ -199,13 +201,31 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
         output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
         sorted_output : dict[int, float] = sort_dict_by_values(output_dict, reverse=True)
         chosen_action : int
+        duped_actions = []
+        for action, game_state in zip(action_stream, state_stream):
+            if player == game_state:
+                if not duped_actions:
+                    repeat_count += 1
+                duped_actions.append(action)
+                break
+        
+        chosen_action : int|None = None
         for action_type in sorted_output:
+            if action_type in duped_actions: continue
             if not verifications[action_type](): continue
             actions[action_type]()
             chosen_action = action_type
             break
+        if not chosen_action:
+            for action_type in sorted_output:
+                if not verifications[action_type](): continue
+                actions[action_type]()
+                chosen_action = action_type
+                break
         if len(state_stream) >= state_stream.maxlen: state_stream.popleft()
         state_stream.append(player.to_game_state())
+        if len(action_stream) >= action_stream.maxlen: action_stream.popleft()
+        action_stream.append(action_type)
         end_dist : float = player.get_dist()
         if chosen_action == bd_core.ActionType.DOWN.value:
             if not player.player_holding_block:
@@ -227,11 +247,6 @@ def eval_genome(genome_arg : tuple[int, neat.DefaultGenome], config : neat.Confi
         if player.game_won():
             genome.fitness = get_fitness(player, turn) + box_carry_bonus + 20
             return
-        if any(player == game_state for game_state in state_stream):
-            repeat_count += 1
-            if repeat_count >= 15:
-                genome.fitness = get_fitness(player, turn) + box_carry_bonus
-                return
     genome.fitness = get_fitness(player, turn) + box_carry_bonus
 
 def eval_genomes(genomes : list[int, tuple[int, neat.DefaultGenome]], config : neat.config.Config, used_map : bd_core.SavedMap|None = None):

@@ -6,6 +6,7 @@ from random import shuffle, choice
 import random
 import json
 from enum import Enum, IntEnum
+from collections import deque
 from non_pygame.block_dude_core import CellType, save_map, load_map
 import non_pygame.block_dude_core as bd_core
 from non_pygame.ml_core import PopulationInterface
@@ -253,7 +254,7 @@ class SimulationGameState(NormalGameState):
         self.fitness_sprite.rect = self.fitness_sprite.surf.get_rect(bottomright = (935, 515))
 
 class ShowcaseGameState(NormalGameState):
-    MAX_TURNS : int = 40
+    MAX_TURNS : int = 100
     def __init__(self, game_object : 'Game', replay : ml_core.GenomeReplay):
         super().__init__(game_object)
         self.genome = replay['genome']
@@ -266,6 +267,8 @@ class ShowcaseGameState(NormalGameState):
         self.visual_map.synchronise_with_player(self.player)
         self.action_timer : Timer = Timer(0.25, time_source=core_object.game.game_timer.get_time)
         self.first_frame : bool = True
+        self.state_stream : deque[bd_core.GameState] = deque([self.player.to_game_state()], maxlen=15)
+        self.action_stream : deque[int] = deque([], maxlen=14)
     
     def main_logic(self, delta : float):
         super().main_logic(delta)
@@ -285,10 +288,31 @@ class ShowcaseGameState(NormalGameState):
                                                     self.player.player_direction, self.player.player_holding_block])
         output_dict : dict[int, float] = {i : output[i] for i in range(len(output))}
         sorted_output = ml_core.sort_dict_by_values(output_dict, reverse=True)
+        duped_actions : list[int] = []
+        for action, game_state in zip(self.action_stream, self.state_stream):
+            if self.player == game_state:
+                print('dupe', bd_core.ActionType(action).name)
+                duped_actions.append(action)
+                break
+        took_action : bool = False
         for action_type in sorted_output:
+            if action_type in duped_actions: continue
             if not verifications[action_type](): continue
             actions[action_type]()
+            print('going', bd_core.ActionType(action_type).name)
+            took_action = True
             break
+        if not took_action:
+            for action_type in sorted_output:
+                if not verifications[action_type](): continue
+                actions[action_type]()
+                print('going', bd_core.ActionType(action_type).name)
+                took_action = True
+                break
+        if len(self.state_stream) >= self.state_stream.maxlen: self.state_stream.popleft()
+        self.state_stream.append(self.player.to_game_state())
+        if len(self.action_stream) >= self.action_stream.maxlen: self.action_stream.popleft()
+        self.action_stream.append(action_type)
         self.current_turn += 1
         if self.player.game_won():
             self.game.alert_player("GG!")
